@@ -1,13 +1,14 @@
-# Imagen para reproducir el pipeline. Verificado el 22-nov-2026: la imagen se construye y las pruebas pasan dentro.
+# Imagen para reproducir el pipeline con Python 3.13.3 y las versiones fijas de requirements.txt.
 # Construir:  docker build -t dengue-pipeline .
 # Pruebas:    docker run --rm dengue-pipeline pytest -q
 # Pipeline:   docker run --rm -v "$PWD/data:/app/data" -v "$PWD/reports:/app/reports" dengue-pipeline python -m dengue_pipeline --help
-FROM python:3.13-slim
+FROM python:3.13.3-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 MPLBACKEND=Agg
 WORKDIR /app
-COPY pyproject.toml README.md ./
+COPY requirements.txt pyproject.toml README.md ./
+RUN pip install --no-cache-dir -r requirements.txt
 COPY src ./src
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN pip install --no-cache-dir --no-deps -e .
 COPY config ./config
 COPY tests ./tests
 COPY notebooks ./notebooks

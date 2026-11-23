@@ -1,17 +1,35 @@
-# Integración continua: instala el paquete y corre las pruebas (datos sintéticos; no necesita los CSV reales).
-# Verificado el 22-nov-2026: pasa en Python 3.11, 3.12 y 3.13.
+# Integración continua. Datos sintéticos; no necesita los CSV reales.
+#  - fijo:   Python 3.13.3 con las versiones exactas de requirements.txt (las de las corridas del artículo).
+#  - compat: Python 3.11 y 3.12 SOLO como comprobación de compatibilidad, con las versiones más recientes
+#            compatibles (sin fijar: numpy 2.5.5 y scipy 1.18.1 no existen para 3.11).
 name: tests
 on:
   push:
     branches: [main]
   pull_request:
 jobs:
-  pytest:
+  fijo:
+    name: pytest (3.13.3, versiones fijas)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.3"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements.txt
+      - run: pip install --no-deps -e .
+      - run: python --version && pip freeze
+      - run: pytest -q
+  compat:
+    name: pytest (${{ matrix.python-version }}, compatibilidad)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,4 +39,5 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
+      - run: python --version && pip freeze
       - run: pytest -q
