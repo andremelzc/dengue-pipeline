@@ -79,12 +79,33 @@ def forecast_at(v: Vintage, F: pd.DataFrame, bt: dict, params: dict, train_idx: 
     return pd.concat(rows, ignore_index=True)
 
 
+def train_origin(bt: dict, first_origin: int) -> int:
+    """Primer origen que entra al entrenamiento y a la elección de hiperparámetros.
+
+    `train_first_year` limita de verdad el entrenamiento: con el valor por defecto (2010) coincide con `first_origin`
+    (inicio de la serie más los rezagos) y no cambia nada; con 2014 se descartan los orígenes anteriores.
+    """
+    return max(int(first_origin), abs_week(bt["train_first_year"], 1))
+
+
+def cv_edges(bt: dict) -> list[int]:
+    """Bordes de los 3 pliegues ordenados de la elección de hiperparámetros, anclados a `tuning_until_year`.
+
+    Con tuning_until_year = 2019: 2014, 2016, 2018 y 2020 (los mismos de siempre). No dependen de `train_first_year`: si el
+    entrenamiento empieza después del primer borde, ese pliegue se queda sin entrenamiento y se omite (con 2014 quedan 2 pliegues).
+    """
+    end = bt["tuning_until_year"] + 1
+    return [abs_week(end - k, 1) for k in (6, 4, 2, 0)]
+
+
 def tune_hyperparameters(v: Vintage, F: pd.DataFrame, bt: dict, train_idx: list[int], h: int, first_origin: int) -> dict:
-    """Elige hiperparámetros con datos hasta tuning_until_year (condición serie final), pliegues ordenados y con purga."""
+    """Elige hiperparámetros con datos hasta tuning_until_year (condición serie final), pliegues ordenados y con purga.
+
+    `first_origin` es el primer origen de entrenamiento (ya considera `train_first_year`, ver `train_origin`).
+    """
     lags = bt["lags_weeks"]
     tune_end = abs_week(bt["tuning_until_year"], weeks_in_year(bt["tuning_until_year"]))
-    y0 = bt["train_first_year"]
-    edges = [abs_week(y, 1) for y in (y0 + 4, y0 + 6, y0 + 8, bt["tuning_until_year"] + 1)]  # 2014, 2016, 2018, 2020
+    edges = cv_edges(bt)
     Ft = F[F["u"].isin(train_idx) & (F["t"] >= first_origin) & (F["t"] + h <= tune_end)].reset_index(drop=True)
     y4 = final_y4(v, Ft["u"].to_numpy(), Ft["t"].to_numpy() + h)
     z = np.log1p(y4) - Ft["c4"].to_numpy()
@@ -118,6 +139,8 @@ def run_backtest(weekly: pd.DataFrame, tri: pd.DataFrame, cfg: dict, models: lis
     v_ref = vints["final"]
     w_last = v_ref.w_last
     first_origin = v_ref.w0 + L - 1
+    t_origin = train_origin(bt, first_origin)          # primer origen de entrenamiento (train_first_year)
+    log(f"[backtest] entrenamiento desde la semana {t_origin} (train_first_year={bt['train_first_year']})")
     test_start = abs_week(bt["test_first_year"], 1)
     train_idx = [units.index(u) for u in bt["train_units"]]
     origins_all = np.arange(first_origin, w_last + 1)
@@ -133,7 +156,7 @@ def run_backtest(weekly: pd.DataFrame, tri: pd.DataFrame, cfg: dict, models: lis
     for h in ([] if frozen else bt["horizons_weeks"]):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            best = tune_hyperparameters(vints["final"], build_feats(vints["final"], origins_all, L), bt, train_idx, h, first_origin)
+            best = tune_hyperparameters(vints["final"], build_feats(vints["final"], origins_all, L), bt, train_idx, h, t_origin)
         params_by_h[h] = {k: {kk: vv for kk, vv in best[k].items()} for k in ("rf", "gb")}
         info["hyperparameters"][f"h{h}"] = {k: (v if not isinstance(v, np.generic) else v.item()) for k, v in best.items()}
         log(f"[tune] h={h}: rf={best['rf']} gb={best['gb']}")
@@ -149,7 +172,7 @@ def run_backtest(weekly: pd.DataFrame, tri: pd.DataFrame, cfg: dict, models: lis
                 block = np.arange(t_fit, min(t_fit + bt["refit_every_weeks"] - 1, last_origin) + 1)
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    p = forecast_at(v, F, bt, params_by_h[h], train_idx, t_fit, block, h, models, first_origin, info, extra)
+                    p = forecast_at(v, F, bt, params_by_h[h], train_idx, t_fit, block, h, models, t_origin, info, extra)
                 p["condition"], p["horizon"], p["fit_week"] = cond, h, t_fit
                 parts.append(p)
                 info["fits"] += 1
