@@ -1,0 +1,70 @@
+# Configuración del pipeline. Cambiar zonas, ventanas o parámetros NO exige cambiar el código.
+# Estado de cada valor: [DECIDIDO] = en decisiones.md; [PROVISIONAL] = valor de trabajo, no decidido;
+# [FALTA] = dato que no tenemos.
+
+study_window:            # [DECIDIDO] datos 2010-2024; núcleo 2020-2024 (2025 solo Piura y San Martín, con advertencia)
+  first_year: 2010
+  last_year: 2024
+  core_first_year: 2020
+
+case_definition: ["C", "P"]   # [DECIDIDO, datos.md 3.10] confirmados + probables; sensibilidad solo con ["C"] desde 2009
+
+units:                   # [DECIDIDO] resolución departamento; Lima Norte agrupada (lista configurable)
+  - {id: PIURA,        type: departamento, departamento: PIURA}
+  - {id: LAMBAYEQUE,   type: departamento, departamento: LAMBAYEQUE}
+  - {id: LA_LIBERTAD,  type: departamento, departamento: "LA LIBERTAD"}
+  - {id: TUMBES,       type: departamento, departamento: TUMBES}      # [A CONFIRMAR] conformidad del profesor
+  - {id: SAN_MARTIN,   type: departamento, departamento: "SAN MARTIN"}
+  - id: LIMA_NORTE       # ocho distritos; ubigeos tomados del CSV nacional (departamento LIMA, provincia LIMA)
+    type: ubigeo_group
+    departamento: LIMA
+    ubigeos: ["150102", "150106", "150110", "150112", "150117", "150125", "150135", "150139"]
+    # ANCON, CARABAYLLO, COMAS, INDEPENDENCIA, LOS OLIVOS, PUENTE PIEDRA, SAN MARTIN DE PORRES (150135, agregado 22-nov-2026 por indicación del usuario), SANTA ROSA
+    # [A CONFIRMAR] conformidad del profesor sobre la lista (¿Rímac?)
+
+nasa_power:              # [FALTA] coordenadas de cada unidad: no inventarlas; completar y documentar la fuente
+  coordinates_csv: config/coordenadas.csv   # unit,lat,lon,source (copiar config/coordenadas_plantilla.csv y completar) [FALTA]
+  parameters: ["T2M", "RH2M", "PRECTOTCORR"]   # [NO VERIFICADO] nombres de variables de la API
+
+alerts:                  # [DECIDIDO 19-nov] cortes por 100 000; la asignación en tres niveles es [INFERENCIA]
+  yellow_per_100k: 50
+  red_per_100k: 150
+  sensitivity_cuts_per_100k: [100, 300]
+  weekly_rate_rule: "[DECISIÓN PENDIENTE] incidencia acumulada de 4 semanas (propuesta)"
+
+horizons_weeks: [2, 4]   # [DECIDIDO]
+
+exogenous:               # ablación: historial | clima | clima_icen. Rezagos en semanas: [PROVISIONAL] valores de trabajo, no decididos
+  climate_lags_weeks: [1, 2, 4, 8]   # >= 1: la semana de origen aún no termina de medirse
+  icen_lags_weeks: [0, 4, 8]         # ICEN temporal: el valor que existía en cada fecha (icen_weekly). Serie real en config/icen.csv (informes IGP 2014-01 a 2026-10); NO cubre 2010-2013
+
+delay:                   # retraso de notificación (etapa 4)
+  estimation:
+    cut: "20260702"      # corte regional de 2026
+    onset_year: 2025     # datos.md 3.6 y pipeline.md 3: estimar en 2025 y probar en 2026
+  exclude_last_weeks: 4  # [PROVISIONAL] semanas finales del corte que se excluyen por estar incompletas
+  max_delay_weeks: 26    # [PROVISIONAL] retraso máximo modelado
+  seed: 20261120         # [PROVISIONAL] semilla de la simulación
+
+validation:
+  last_year_ratio_threshold: 0.25     # [PROVISIONAL] alerta si el último año < 25 % del anterior (caso 2025 en la costa)
+  recent_week_ratio_threshold: 0.7    # [PROVISIONAL] alerta si las últimas semanas del corte < 70 % de las previas
+
+backtest:                # etapas 5 y 6. Bloque aprobado por el usuario el 22-nov-2026 (falta la conformidad del equipo/profesor); lo marcado [PROVISIONAL] sigue abierto (ver reports/protocolo_evaluacion.md)
+  train_first_year: 2010            # [DECIDIDO] datos 2010-2024
+  test_first_year: 2020             # [APROBADO 22-nov-2026] núcleo 2020-2024
+  test_last_year: 2024
+  refit_every_weeks: 4              # [APROBADO 22-nov-2026] el modelo se reentrena cada 4 semanas
+  window: expanding                 # [APROBADO 22-nov-2026] ventana que se expande (deslizante = sensibilidad)
+  horizons_weeks: [2, 4]            # [DECIDIDO]
+  lags_weeks: 8                     # [PROVISIONAL] semanas de historial como variables
+  train_label_guard_weeks: 4        # [PROVISIONAL] solo se entrena con objetivos que terminaron hace >= 4 semanas
+  endemic_channel_center: median    # median [APROBADO]; geometric = sensibilidad opcional, no es el valor por defecto; geometric usa endemic_channel_shift (Umaña 2026, JMIR e79914)
+  endemic_channel_shift: 0.001      # solo si center=geometric
+  endemic_channel_years: 5          # [PROVISIONAL] años previos de la línea base de canal endémico [SIN FUENTE: agregar referencia]
+  train_units: [PIURA, LAMBAYEQUE, LA_LIBERTAD, TUMBES, SAN_MARTIN]   # un solo modelo con todas
+  transfer_units: [LIMA_NORTE]      # [APROBADO 22-nov-2026] sin historia propia: se evalúa con el modelo entrenado en las demás
+  tuning_until_year: 2019           # [APROBADO 22-nov-2026] hiperparámetros elegidos solo con datos hasta 2019 y luego congelados
+  seed: 20261120                    # [PROVISIONAL]
+  bootstrap: {block_weeks: 8, n_resamples: 1000, ci: 0.95}   # [PROVISIONAL] bootstrap por bloques de semanas
+  population_csv: data/processed/population.csv   # unit,year,population (INEI, cuadro departamental 2000-2026). Lima Norte [FALTA]: sin población no tiene tasa
