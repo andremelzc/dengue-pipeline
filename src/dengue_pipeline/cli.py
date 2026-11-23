@@ -8,7 +8,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import acquire, alerts_eval, eda, exogenous, icen_reports, integrate, population, snapshots, validate
+from . import (acquire, alerts_eval, delay_scenarios, eda, exogenous, icen_reports, integrate, population, snapshots,
+               validate)
 from .config import load_config
 from .epiweek import abs_week
 from .io import read_strict
@@ -44,30 +45,36 @@ def _cmd_integrate(a, cfg):
     return 0
 
 
-def _estimate(a, cfg):
-    d = cfg["delay"]
-    return snapshots.delay_pmf(read_strict(a.regional), d["estimation"]["cut"], d["estimation"]["onset_year"],
-                               d["exclude_last_weeks"], d["max_delay_weeks"])
+def _write_pmf(r, path):
+    pd.DataFrame({"delay_weeks": range(len(r["pmf"])), "pmf": r["pmf"], "cum": r["cum"]}).to_csv(path, index=False)
 
 
 def _cmd_delay(a, cfg):
-    r = _estimate(a, cfg)
+    reg = read_strict(a.regional)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame({"delay_weeks": range(len(r["pmf"])), "pmf": r["pmf"], "cum": r["cum"]}).to_csv(
-        out / "delay_pmf.csv", index=False)
-    print({k: v for k, v in r.items() if k not in ("pmf", "cum")})
+    names = list(delay_scenarios.scenarios(cfg)) if a.all_scenarios else [a.scenario]
+    for name in names:
+        r = delay_scenarios.estimate(reg, cfg, name)
+        _write_pmf(r, out / ("delay_pmf.csv" if name == delay_scenarios.BASE else f"delay_pmf_{name}.csv"))
+        print(name, {k: v for k, v in r.items() if k not in ("pmf", "cum")})
+    if a.all_scenarios:
+        delay_scenarios.summary(reg, cfg).to_csv(out / "delay_scenarios_summary.csv", index=False)
+        print("Resumen de escenarios: delay_scenarios_summary.csv")
     return 0
 
 
 def _cmd_simulate(a, cfg):
-    r = _estimate(a, cfg)
+    seed = cfg["delay"]["seed"] if a.seed is None else a.seed
+    r = delay_scenarios.estimate(read_strict(a.regional), cfg, a.scenario)
     final = integrate.weekly_table(read_strict(a.national), cfg)
-    tri = snapshots.simulate_triangle(final, r["pmf"], cfg["delay"]["seed"])
+    tri = snapshots.simulate_triangle(final, r["pmf"], seed)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    tri.to_csv(out / "triangle_simulated.csv.gz", index=False)
-    print(f"{len(tri)} filas del triángulo simulado (semilla {cfg['delay']['seed']})")
+    is_main = a.scenario == delay_scenarios.BASE and seed == cfg["delay"]["seed"]
+    name = "triangle_simulated.csv.gz" if is_main else f"triangle_simulated_{delay_scenarios.tag(a.scenario, seed)}.csv.gz"
+    tri.to_csv(out / name, index=False)
+    print(f"{len(tri)} filas del triángulo simulado ({a.scenario}, semilla {seed}) -> {name}")
     return 0
 
 
@@ -164,6 +171,22 @@ def _cmd_eda(a, cfg):
     return 0
 
 
+def _exog_for(a, weekly, units, cfg):
+    """(exog, prefijo de archivo) de la condición pedida; (None, "") para `historial`."""
+    if a.features == "historial":
+        return None, ""
+    tag = ""
+    if a.example_exog:
+        print("AVISO: datos de EJEMPLO sintéticos; la salida NO es un resultado y se guarda con prefijo EJEMPLO_NO_REAL")
+        climate = exogenous.make_example_climate(weekly)
+        icen = exogenous.make_example_icen(weekly)
+        tag = exogenous.EXAMPLE_FLAG + "_"
+    else:
+        climate = pd.read_csv(a.climate_csv) if Path(a.climate_csv).exists() else None
+        icen = pd.read_csv(a.icen_csv) if Path(a.icen_csv).exists() else None
+    return exogenous.build_exog(a.features, weekly, units, cfg, climate, icen), tag
+
+
 def _cmd_backtest(a, cfg):
     from . import backtest, metrics
     weekly = pd.read_csv(a.weekly)
@@ -175,17 +198,7 @@ def _cmd_backtest(a, cfg):
         cfg["backtest"]["train_first_year"] = a.train_first_year
         if a.out == "data/processed/backtest":
             out = Path(f"data/processed/backtest_desde{a.train_first_year}")
-    exog, tag = None, ""
-    if a.features != "historial":
-        if a.example_exog:
-            print("AVISO: datos de EJEMPLO sintéticos; la salida NO es un resultado y se guarda con prefijo EJEMPLO_NO_REAL")
-            climate = exogenous.make_example_climate(weekly)
-            icen = exogenous.make_example_icen(weekly)
-            tag = exogenous.EXAMPLE_FLAG + "_"
-        else:
-            climate = pd.read_csv(a.climate_csv) if Path(a.climate_csv).exists() else None
-            icen = pd.read_csv(a.icen_csv) if Path(a.icen_csv).exists() else None
-        exog = exogenous.build_exog(a.features, weekly, units, cfg, climate, icen)
+    exog, tag = _exog_for(a, weekly, units, cfg)
     frozen = None
     if a.features != "historial" and (out / "hyperparameters.json").exists():
         frozen = backtest.load_frozen_params(out / "hyperparameters.json")
@@ -198,6 +211,52 @@ def _cmd_backtest(a, cfg):
     pd_ = metrics.paired_difference(pred, b["block_weeks"], b["n_resamples"], b["ci"], cfg["backtest"]["seed"])
     pd_.to_csv(out / f"{tag}paired_difference{suffix}.csv", index=False)
     print(f"{len(pred)} predicciones; {info['fits']} reentrenamientos; fallbacks NB: {len(info.get('negbin_fallbacks', []))}")
+    return 0
+
+
+def _cmd_delay_sensitivity(a, cfg):
+    """Sensibilidad al retraso: cada escenario x semilla simula su propio triángulo y corre solo la condición `disponibles`.
+
+    Reutiliza los hiperparámetros congelados de la corrida principal (hay que haber corrido antes `backtest` con el mismo
+    --train-first-year). La serie final no depende del retraso, así que no se repite.
+    """
+    from . import backtest, metrics
+    weekly = pd.read_csv(a.weekly)
+    out = Path(a.out)
+    models = a.models.split(",") if a.models else None
+    units = [u["id"] for u in cfg["units"]]
+    if a.train_first_year:
+        cfg["backtest"]["train_first_year"] = a.train_first_year
+        if a.out == "data/processed/backtest":
+            out = Path(f"data/processed/backtest_desde{a.train_first_year}")
+    hp = out / "hyperparameters.json"
+    if not hp.exists():
+        raise SystemExit(f"[FALTA] {hp}: corre antes `backtest` (condición historial) con el mismo --train-first-year")
+    frozen = backtest.load_frozen_params(hp)
+    exog, tag = _exog_for(a, weekly, units, cfg)
+    reg = read_strict(a.regional)
+    names = a.scenarios.split(",") if a.scenarios else list(delay_scenarios.scenarios(cfg))
+    seeds = delay_scenarios.seeds(cfg)[: a.n_seeds] if a.n_seeds else delay_scenarios.seeds(cfg)
+    suffix = "" if a.features == "historial" else f"_{a.features}"
+    sdir = out / "sensibilidad_retraso"
+    b = cfg["backtest"]["bootstrap"]
+    rows = []
+    for name in names:
+        pmf = delay_scenarios.estimate(reg, cfg, name)["pmf"]
+        for seed in seeds:
+            tri = snapshots.simulate_triangle(weekly, pmf, seed)
+            t = delay_scenarios.tag(name, seed)
+            pred, info = backtest.run_backtest(weekly, tri, cfg, models=models, conditions=("disponibles",), out_dir=sdir,
+                                               features=a.features, exog=exog, params_by_h=frozen,
+                                               out_name=f"{tag}predictions{suffix}_{t}.csv.gz")
+            summ = metrics.summarize(pred, b["block_weeks"], b["n_resamples"], b["ci"], cfg["backtest"]["seed"])
+            summ.insert(0, "semilla", seed)
+            summ.insert(0, "escenario", name)
+            summ.insert(0, "features", a.features)
+            rows.append(summ)
+            print(f"[{t}] {len(pred)} predicciones; fallbacks NB: {len(info.get('negbin_fallbacks', []))}")
+    pd.concat(rows, ignore_index=True).to_csv(sdir / f"{tag}metrics_summary{suffix}_sensibilidad_retraso.csv", index=False)
+    print(f"Resumen: {sdir / (tag + 'metrics_summary' + suffix + '_sensibilidad_retraso.csv')}")
     return 0
 
 
@@ -227,12 +286,16 @@ def main(argv: list[str] | None = None) -> int:
 
     s = sub.add_parser("delay", help="etapa 4: distribución del retraso de notificación (Piura)")
     s.add_argument("--regional", required=True)
+    s.add_argument("--scenario", default=delay_scenarios.BASE, help="escenario del retraso (por defecto el base, piura2025)")
+    s.add_argument("--all-scenarios", action="store_true", help="escribe los tres escenarios y delay_scenarios_summary.csv")
     s.add_argument("--out", default="data/processed")
     s.set_defaults(fn=_cmd_delay)
 
     s = sub.add_parser("simulate", help="etapa 4: triángulo simulado de datos disponibles")
     s.add_argument("--national", required=True)
     s.add_argument("--regional", required=True)
+    s.add_argument("--scenario", default=delay_scenarios.BASE, help="escenario del retraso (por defecto el base, piura2025)")
+    s.add_argument("--seed", type=int, default=None, help="semilla (por defecto delay.seed de config.yaml)")
     s.add_argument("--out", default="data/processed")
     s.set_defaults(fn=_cmd_simulate)
 
@@ -300,6 +363,21 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--models", default=None, help="lista separada por comas (por defecto los cuatro)")
     s.add_argument("--out", default="data/processed/backtest")
     s.set_defaults(fn=_cmd_backtest)
+
+    s = sub.add_parser("delay-sensitivity",
+                       help="sensibilidad al retraso: escenarios (piura2025, piura2026, piura2023) x semillas, solo condición disponibles")
+    s.add_argument("--regional", required=True)
+    s.add_argument("--features", choices=list(exogenous.CONDITIONS), default="historial")
+    s.add_argument("--climate-csv", default="data/processed/climate_weekly.csv")
+    s.add_argument("--icen-csv", default="data/processed/icen_weekly.csv")
+    s.add_argument("--train-first-year", type=int, default=None, help="igual que en backtest (la misma que usó la corrida principal)")
+    s.add_argument("--example-exog", action="store_true", help="usa clima/ICEN SINTÉTICOS solo para probar la interfaz")
+    s.add_argument("--weekly", default="data/processed/weekly_final.csv")
+    s.add_argument("--scenarios", default=None, help="lista separada por comas (por defecto todos)")
+    s.add_argument("--n-seeds", type=int, default=None, help="solo las primeras N semillas (por defecto todas)")
+    s.add_argument("--models", default=None, help="lista separada por comas (por defecto los cuatro)")
+    s.add_argument("--out", default="data/processed/backtest")
+    s.set_defaults(fn=_cmd_delay_sensitivity)
 
     a = p.parse_args(argv)
     return a.fn(a, load_config(a.config))
