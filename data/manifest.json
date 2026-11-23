@@ -1,0 +1,28 @@
+[
+ {
+  "file": "datos_abiertos_vigilancia_dengue_2000_2025_0__1_.csv",
+  "kind": "national",
+  "source_url": "https://www.datosabiertos.gob.pe/dataset/vigilancia-epidemiol%C3%B3gica-de-dengue",
+  "downloaded_on": "2026-11-20",
+  "registered_at_utc": "2026-11-21T04:31:46+00:00",
+  "size_bytes": 117866478,
+  "sha256": "7865e8b2f5a7aef1e8dce159444891f2c2e59b311d574f28c55aaca5a9abb8ba",
+  "physical_lines": 1065275,
+  "rows_parsed": 1065274,
+  "columns_ok": true,
+  "downloaded_on_note": "fecha indicada por el usuario: la de su carga a este chat (hora de Lima)"
+ },
+ {
+  "file": "627a5d7f-dataset_dengue_actualizado_1.csv",
+  "kind": "regional",
+  "source_url": "https://www.datosabiertos.gob.pe/dataset/casos-de-dengue-en-la-regi%C3%B3n-piura-gobierno-regional-piura",
+  "downloaded_on": "2026-11-20",
+  "registered_at_utc": "2026-11-21T04:31:46+00:00",
+  "size_bytes": 5922400,
+  "sha256": "7034519f94396df2077657c453897b1972893f1e7be724c8c8bcb0ce7cc8d093",
+  "physical_lines": 47083,
+  "rows_parsed": 47082,
+  "columns_ok": true,
+  "downloaded_on_note": "fecha indicada por el usuario: la de su carga a este chat (hora de Lima)"
+ }
+]
