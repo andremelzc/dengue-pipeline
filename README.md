@@ -11,13 +11,14 @@ disponibles en cada semana (incluido el retraso de notificación). Es un backtes
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,notebook,icen]"
-pytest                      # 91 pasan y 7 se saltan sin los archivos reales (probado 22-nov-2026)
-# pruebas que reproducen cifras de datos.md con los CSV reales (con los tres archivos pasan las 90):
+pip install -r requirements.txt && pip install --no-deps -e .   # versiones exactas de las corridas del artículo (Python 3.13.3)
+# alternativa sin fijar versiones (otros Python): pip install -e ".[dev,notebook,icen]"
+pytest                      # 97 pasan y 7 se saltan sin los archivos reales (probado 23-nov-2026)
+# con los tres archivos reales se ejecutan también esas 7 pruebas, que reproducen cifras de datos.md:
 DENGUE_NATIONAL_CSV=/ruta/nacional.csv DENGUE_REGIONAL_CSV=/ruta/regional.csv DENGUE_POPULATION_XLSX=/ruta/proy_03_4.xlsx pytest
 ```
 
-Probado con Python 3.13 en dos entornos: pandas 3.0.5, numpy 2.5.3, pyyaml 6.0.3, pytest 9.1.1; y una instalación limpia con pandas 3.1.1, numpy 2.5.5, pyyaml 6.0.4, pytest 9.2.0.
+**Las corridas del artículo usan Python 3.13.3 con las versiones exactas de `requirements.txt`**: pandas 3.1.1, numpy 2.5.5, scikit-learn 1.9.1, statsmodels 0.15.0, matplotlib 3.11.2, scipy 1.18.1, PyYAML 6.0.4, openpyxl 3.1.5 y pytest 9.2.0. Python 3.11 y 3.12 se prueban en el CI solo como comprobación de compatibilidad, con las versiones más recientes compatibles y sin fijar (para 3.11 no existen numpy 2.5.5 ni scipy 1.18.1). Las extras `notebook` e `icen` (jupyterlab, nbconvert, pdfplumber) no están fijadas.
 
 ## Uso (los CSV se descargan a mano; ver datos.md 1.1)
 
@@ -131,7 +132,7 @@ Las salidas llevan la nota "no citar como resultado" mientras falte la conformid
 `notebooks/ejecutar_pipeline.ipynb` ejecuta todo en orden (instalar con `pip install -e ".[dev,notebook]"`). Revisar primero su celda de parámetros.
 
 ## Integración continua y contenedor
-`.github/workflows/ci.yml` (Python 3.11 a 3.13, `pytest`) y `Dockerfile`: verificados el 22-nov-2026 (CI en GitHub Actions; imagen construida y pruebas dentro del contenedor). `make test` corre las pruebas.
+`.github/workflows/ci.yml`: un trabajo con Python 3.13.3 y las versiones fijas de `requirements.txt`, y otro con Python 3.11 y 3.12 solo como comprobación de compatibilidad (versiones sin fijar). `Dockerfile`: `python:3.13.3-slim` con `requirements.txt`. `make test` corre las pruebas; `make install-fijo` instala las versiones exactas. [NO VERIFICADO: el CI con versiones fijas y la imagen de Docker nuevos se comprueban tras este cambio; ver "Verificado".]
 
 ## Población, incidencia y niveles de alerta (nuevo)
 ```bash
