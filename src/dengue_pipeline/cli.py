@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import (acquire, alerts_eval, delay_scenarios, eda, exogenous, icen_reports, integrate, population, snapshots,
-               validate)
+from . import (acquire, alerts_eval, compare_runs, delay_scenarios, eda, exogenous, icen_reports, integrate, population,
+               reproduce, snapshots, validate)
 from .config import load_config
 from .epiweek import abs_week
 from .io import read_strict
@@ -260,6 +260,32 @@ def _cmd_delay_sensitivity(a, cfg):
     return 0
 
 
+def _cmd_reproduce(a, cfg):
+    res = reproduce.verify_inputs({"national": a.national, "regional": a.regional}, a.manifest)
+    for r in res:
+        print(f"[{'OK' if r['ok'] else 'HASH DISTINTO'}] {r['kind']}: {r['file']}")
+        print(f"    sha256   {r['sha256']}")
+        print(f"    esperado {r['esperado']}")
+    if not all(r["ok"] for r in res):
+        if not a.allow_different_data:
+            print("Los datos no son los del manifiesto: la comparación con otras corridas no tendría sentido. "
+                  "Usa la misma copia de los CSV (el portal puede haberlos actualizado). "
+                  "Para correr de todos modos: --allow-different-data.")
+            return 2
+        print("AVISO: se sigue con datos distintos a los del manifiesto (--allow-different-data).")
+    steps = reproduce.build_steps(a.national, a.regional, a.population_xlsx, a.districts, a.climate_downloaded_on,
+                                  a.skip_climate, not a.no_ablation, not a.no_sensitivity)
+    only = a.only.split(",") if a.only else None
+    steps = reproduce.select(steps, a.from_step, only)
+    return reproduce.run(steps, dry_run=a.dry_run, log_path="data/processed/reproducir_log.json")
+
+
+def _cmd_compare_runs(a, cfg):
+    rows = compare_runs.compare_dirs(a.dir_a, a.dir_b, a.tol)
+    print(compare_runs.format_report(rows))
+    return 0 if rows and all(r["estado"] == "OK" for r in rows) else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="dengue_pipeline")
     p.add_argument("--config", default=None, help="ruta de config.yaml")
@@ -378,6 +404,28 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--models", default=None, help="lista separada por comas (por defecto los cuatro)")
     s.add_argument("--out", default="data/processed/backtest")
     s.set_defaults(fn=_cmd_delay_sensitivity)
+
+    s = sub.add_parser("reproduce", help="corre TODO el pipeline con un solo comando, tras comprobar los hashes de los CSV")
+    s.add_argument("--national", required=True)
+    s.add_argument("--regional", required=True)
+    s.add_argument("--population-xlsx", required=True, help="cuadro departamental INEI (proy_03_4.xlsx)")
+    s.add_argument("--districts", default=None, help="cuadro distrital INEI 2018-2026 (Lima Norte)")
+    s.add_argument("--manifest", default="data/manifest.json")
+    s.add_argument("--climate-downloaded-on", default=None, help="AAAA-MM-DD (por defecto, hoy)")
+    s.add_argument("--skip-climate", action="store_true", help="no descarga el clima (ya existe data/processed/climate_weekly.csv)")
+    s.add_argument("--no-sensitivity", action="store_true", help="omite la sensibilidad al retraso")
+    s.add_argument("--no-ablation", action="store_true", help="omite la ablación desde 2014")
+    s.add_argument("--from", dest="from_step", default=None, help="continúa desde este paso (tras un fallo o un corte)")
+    s.add_argument("--only", default=None, help="solo estos pasos, separados por comas")
+    s.add_argument("--dry-run", action="store_true", help="solo muestra los comandos")
+    s.add_argument("--allow-different-data", action="store_true", help="sigue aunque el hash de los CSV no coincida con el manifiesto")
+    s.set_defaults(fn=_cmd_reproduce)
+
+    s = sub.add_parser("compare-runs", help="compara dos carpetas data/processed (dos corridas) con una tolerancia numérica")
+    s.add_argument("dir_a")
+    s.add_argument("dir_b")
+    s.add_argument("--tol", type=float, default=1e-6, help="máxima diferencia numérica aceptada (por defecto 1e-6)")
+    s.set_defaults(fn=_cmd_compare_runs)
 
     a = p.parse_args(argv)
     return a.fn(a, load_config(a.config))
