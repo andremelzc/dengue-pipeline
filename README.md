@@ -13,7 +13,7 @@ disponibles en cada semana (incluido el retraso de notificación). Es un backtes
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt && pip install --no-deps -e .   # versiones exactas de las corridas del artículo (Python 3.13.3)
 # alternativa sin fijar versiones (otros Python): pip install -e ".[dev,notebook,icen]"
-pytest                      # 97 pasan y 7 se saltan sin los archivos reales (probado 23-nov-2026)
+pytest                      # 110 pasan y 7 se saltan sin los archivos reales (probado 23-nov-2026)
 # con los tres archivos reales se ejecutan también esas 7 pruebas, que reproducen cifras de datos.md:
 DENGUE_NATIONAL_CSV=/ruta/nacional.csv DENGUE_REGIONAL_CSV=/ruta/regional.csv DENGUE_POPULATION_XLSX=/ruta/proy_03_4.xlsx pytest
 ```
@@ -70,7 +70,7 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 **Verificado el 22-nov-2026**
 - La descarga de NASA POWER (`climate`): 6 unidades, 2009-11-01 a 2024-12-31, 5 540 días por unidad, sin valores -999; 6 semanas incompletas quedan marcadas y sin rellenar. Hash SHA-256 en `data/processed/climate_manifest.json`.
 - **Corrección del 23-nov-2026 (entrenamiento desde 2014).** La ablación del 22-nov-2026 se corrió con `--train-first-year 2014`, pero esa opción solo cambiaba los bordes de los pliegues de la elección de hiperparámetros (con 2014 quedaba 1 pliegue) y no limitaba el entrenamiento: las tres condiciones entrenaron desde 2010. Ya está corregido: ahora limita el entrenamiento y la elección de hiperparámetros, y los pliegues no dependen de ella. Las salidas del 22-nov-2026 no se usan; la ablación se repite desde 2014 [PENDIENTE: confirmar que terminó].
-- El flujo de GitHub Actions pasó en Python 3.11, 3.12 y 3.13 (22-nov-2026, antes de fijar las versiones). El trabajo `pytest (3.13.3, versiones fijas)` se verifica al subir el cambio [NO VERIFICADO].
+- El flujo de GitHub Actions pasó en Python 3.11, 3.12 y 3.13 (22-nov-2026, antes de fijar las versiones). El trabajo `pytest (3.13.3, versiones fijas)` pasó el 23-nov-2026 en `ubuntu-24.04` con las versiones de `requirements.txt` (97 pruebas pasan, 7 se saltan).
 - El `Dockerfile` con versiones fijas (23-nov-2026): la imagen `python:3.13.3-slim` se construye con `requirements.txt` y dentro del contenedor pasan 97 pruebas y se saltan 7 (Python 3.13.3, pandas 3.1.1, numpy 2.5.5, scikit-learn 1.9.1, statsmodels 0.15.0, matplotlib 3.11.2, scipy 1.18.1).
 
 **Decisiones del equipo [DECISIÓN PENDIENTE]**
@@ -87,6 +87,14 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 - El canal endémico (mediana de las mismas semanas de los 5 años previos) es una referencia débil en dengue: subestima en años de epidemia y sobrestima después de una epidemia previa, porque el dengue no es estacionario.
 - La serie final del CSV nacional es por semana de **inicio de síntomas**; 2025 está incompleto en la costa (no usar para evaluar falsas alarmas).
 
+
+## Reproducir todo y comparar corridas
+Un solo comando corre toda la secuencia (14 pasos) tras comprobar los hashes de los CSV contra `data/manifest.json`, y otro compara dos corridas con una tolerancia numérica:
+```bash
+python -m dengue_pipeline reproduce --national nacional.csv --regional piura.csv --population-xlsx proy_03_4.xlsx --districts distrital.xlsx [--dry-run] [--from PASO]
+python -m dengue_pipeline compare-runs data/processed otra/processed        # OK / DIFERENTE / FALTA por archivo; código 1 si hay diferencias
+```
+Instructivo para que varias personas corran lo mismo y comparen: `docs/reproducir.md`. Los CSV del portal pueden haberse actualizado: hay que usar la misma copia que registra el manifiesto.
 
 ## Etapas 5 y 6 (backtesting) y ablación
 ```bash
@@ -132,7 +140,7 @@ Las salidas llevan la nota "no citar como resultado" mientras falte la conformid
 `notebooks/ejecutar_pipeline.ipynb` ejecuta todo en orden (instalar con `pip install -e ".[dev,notebook]"`). Revisar primero su celda de parámetros.
 
 ## Integración continua y contenedor
-`.github/workflows/ci.yml`: un trabajo con Python 3.13.3 y las versiones fijas de `requirements.txt`, y otro con Python 3.11 y 3.12 solo como comprobación de compatibilidad (versiones sin fijar). `Dockerfile`: `python:3.13.3-slim` con `requirements.txt`. `make test` corre las pruebas; `make install-fijo` instala las versiones exactas. La imagen de Docker está verificada (ver "Verificado"). [NO VERIFICADO: el trabajo del CI con versiones fijas se comprueba al subir este cambio.]
+`.github/workflows/ci.yml`: un trabajo con Python 3.13.3 y las versiones fijas de `requirements.txt`, y otro con Python 3.11 y 3.12 solo como comprobación de compatibilidad (versiones sin fijar). `Dockerfile`: `python:3.13.3-slim` con `requirements.txt`. `make test` corre las pruebas; `make install-fijo` instala las versiones exactas. La imagen de Docker y el trabajo del CI con versiones fijas están verificados (ver "Verificado"). El trabajo fijo corre en `ubuntu-24.04` porque para Ubuntu 26.04 GitHub no ofrece Python 3.13.3.
 
 ## Población, incidencia y niveles de alerta (nuevo)
 ```bash
