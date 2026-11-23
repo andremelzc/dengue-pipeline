@@ -70,8 +70,8 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 **Verificado el 22-nov-2026**
 - La descarga de NASA POWER (`climate`): 6 unidades, 2009-11-01 a 2024-12-31, 5 540 días por unidad, sin valores -999; 6 semanas incompletas quedan marcadas y sin rellenar. Hash SHA-256 en `data/processed/climate_manifest.json`.
 - **Corrección del 23-nov-2026 (entrenamiento desde 2014).** La ablación del 22-nov-2026 se corrió con `--train-first-year 2014`, pero esa opción solo cambiaba los bordes de los pliegues de la elección de hiperparámetros (con 2014 quedaba 1 pliegue) y no limitaba el entrenamiento: las tres condiciones entrenaron desde 2010. Ya está corregido: ahora limita el entrenamiento y la elección de hiperparámetros, y los pliegues no dependen de ella. Las salidas del 22-nov-2026 no se usan; la ablación se repite desde 2014 [PENDIENTE: confirmar que terminó].
-- El flujo de GitHub Actions: pasa en Python 3.11, 3.12 y 3.13.
-- El `Dockerfile`: la imagen se construye y las pruebas pasan dentro (83 pasan, 7 se saltan).
+- El flujo de GitHub Actions pasó en Python 3.11, 3.12 y 3.13 (22-nov-2026, antes de fijar las versiones). El trabajo `pytest (3.13.3, versiones fijas)` se verifica al subir el cambio [NO VERIFICADO].
+- El `Dockerfile` con versiones fijas (23-nov-2026): la imagen `python:3.13.3-slim` se construye con `requirements.txt` y dentro del contenedor pasan 97 pruebas y se saltan 7 (Python 3.13.3, pandas 3.1.1, numpy 2.5.5, scikit-learn 1.9.1, statsmodels 0.15.0, matplotlib 3.11.2, scipy 1.18.1).
 
 **Decisiones del equipo [DECISIÓN PENDIENTE]**
 - Protocolo `backtest:` APROBADO por el usuario el 22-nov-2026 (falta la conformidad del profesor/equipo). Retraso de notificación: escenario base Piura 2025, con Piura 2026 y Piura 2023 como sensibilidad y 5 semillas por escenario (criterio fijado antes de ver resultados; falta la conformidad del profesor). Siguen abiertos los [PROVISIONAL]: semilla del bootstrap y bloque del bootstrap.
@@ -132,7 +132,7 @@ Las salidas llevan la nota "no citar como resultado" mientras falte la conformid
 `notebooks/ejecutar_pipeline.ipynb` ejecuta todo en orden (instalar con `pip install -e ".[dev,notebook]"`). Revisar primero su celda de parámetros.
 
 ## Integración continua y contenedor
-`.github/workflows/ci.yml`: un trabajo con Python 3.13.3 y las versiones fijas de `requirements.txt`, y otro con Python 3.11 y 3.12 solo como comprobación de compatibilidad (versiones sin fijar). `Dockerfile`: `python:3.13.3-slim` con `requirements.txt`. `make test` corre las pruebas; `make install-fijo` instala las versiones exactas. [NO VERIFICADO: el CI con versiones fijas y la imagen de Docker nuevos se comprueban tras este cambio; ver "Verificado".]
+`.github/workflows/ci.yml`: un trabajo con Python 3.13.3 y las versiones fijas de `requirements.txt`, y otro con Python 3.11 y 3.12 solo como comprobación de compatibilidad (versiones sin fijar). `Dockerfile`: `python:3.13.3-slim` con `requirements.txt`. `make test` corre las pruebas; `make install-fijo` instala las versiones exactas. La imagen de Docker está verificada (ver "Verificado"). [NO VERIFICADO: el trabajo del CI con versiones fijas se comprueba al subir este cambio.]
 
 ## Población, incidencia y niveles de alerta (nuevo)
 ```bash
