@@ -81,6 +81,7 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 - El retraso se mide solo sobre casos que ya llegaron al archivo, así que aparece subestimado (datos.md 3.6).
 - Las instantáneas reales suponen que el archivo de un corte no omite reclasificaciones ni bajas posteriores.
 - El retraso simulado en las demás unidades es un supuesto: se observa solo en Piura.
+- El canal endémico (mediana de las mismas semanas de los 5 años previos) es una referencia débil en dengue: subestima en años de epidemia (error logarítmico absoluto de 3,4 en 2023, con sesgo negativo) y sobrestima tras una epidemia previa (p. ej. Piura 2020). Revisado el 22-nov-2026 con la corrida de prueba: el cálculo es correcto; el error alto viene de que el dengue no es estacionario. Cifras de prueba, no citables.
 - La serie final del CSV nacional es por semana de **inicio de síntomas**; 2025 está incompleto en la costa (no usar para evaluar falsas alarmas).
 
 
