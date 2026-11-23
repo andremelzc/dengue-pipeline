@@ -1,4 +1,4 @@
-# Imagen para reproducir el pipeline. [NO VERIFICADO] No se construyó en el entorno donde se preparó.
+# Imagen para reproducir el pipeline. Verificado el 22-nov-2026: la imagen se construye y las pruebas pasan dentro.
 # Construir:  docker build -t dengue-pipeline .
 # Pruebas:    docker run --rm dengue-pipeline pytest -q
 # Pipeline:   docker run --rm -v "$PWD/data:/app/data" -v "$PWD/reports:/app/reports" dengue-pipeline python -m dengue_pipeline --help

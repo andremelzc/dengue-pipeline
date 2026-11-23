@@ -1,5 +1,5 @@
 # Integración continua: instala el paquete y corre las pruebas (datos sintéticos; no necesita los CSV reales).
-# [NO VERIFICADO] Este flujo no se ha ejecutado en GitHub todavía: se verifica al crear el repositorio.
+# Verificado el 22-nov-2026: pasa en Python 3.11, 3.12 y 3.13.
 name: tests
 on:
   push:
