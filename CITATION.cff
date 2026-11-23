@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "Si usa este software, cítelo como se indica."
+title: "dengue-pipeline: pipeline reproducible para evaluar alertas de dengue con retraso de notificación"
+authors:
+  - family-names: "Melendez Cava"
+    given-names: "Andre Ivan"
+    affiliation: "Universidad Nacional Mayor de San Marcos, Facultad de Ingeniería de Sistemas e Informática, Lima, Perú"
+  - family-names: "Mantari Flores"
+    given-names: "Fabrizio Armando"
+    affiliation: "Universidad Nacional Mayor de San Marcos, Facultad de Ingeniería de Sistemas e Informática, Lima, Perú"
+  - family-names: "Cueva Alcala"
+    given-names: "Axel Andree"
+    affiliation: "Universidad Nacional Mayor de San Marcos, Facultad de Ingeniería de Sistemas e Informática, Lima, Perú"
+license: MIT
+repository-code: "https://github.com/andremelzc/dengue-pipeline"
