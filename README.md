@@ -1,4 +1,4 @@
-# dengue-pipeline
+﻿# dengue-pipeline
 
 Pipeline reproducible, en Python y por línea de comandos, para evaluar alertas de dengue con los datos
 disponibles en cada semana (incluido el retraso de notificación). Es un backtesting, no un sistema en operación.
@@ -74,7 +74,7 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 - Protocolo `backtest:` APROBADO por el usuario el 22-nov-2026 (falta la conformidad del profesor/equipo). Siguen abiertos los [PROVISIONAL]: retraso de notificación, semillas, bloque del bootstrap.
 - Valores [PROVISIONAL] de `config.yaml` (semanas excluidas al estimar el retraso, retraso máximo, semilla, umbrales de validación, rezagos de clima e ICEN).
 - Tasa semanal: hoy es la incidencia acumulada de 4 semanas con la población del año epidemiológico (propuesta).
-- Autores: `LICENSE` (MIT, elegida el 22-nov-2026; los datos del CDC/INEI tienen sus propios términos) lleva `[FALTA: autores del artículo]`; completar también `docs/CITATION.cff.plantilla`.
+- Autores: `LICENSE` (MIT, elegida el 22-nov-2026; los datos del CDC/INEI tienen sus propios términos) está a nombre de los tres autores del artículo (Melendez Cava, Mantari Flores, Cueva Alcala), igual que `CITATION.cff`. En `CITATION.cff` faltan la versión, la fecha de publicación y el DOI, que no se inventan.
 
 ## Límites que se declaran
 
