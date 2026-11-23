@@ -1,4 +1,4 @@
-﻿# dengue-pipeline
+# dengue-pipeline
 
 Pipeline reproducible, en Python y por línea de comandos, para evaluar alertas de dengue con los datos
 disponibles en cada semana (incluido el retraso de notificación). Es un backtesting, no un sistema en operación.
@@ -63,10 +63,12 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 - Coordenadas: `config/coordenadas.csv` trae una PROPUESTA (punto de la capital departamental; Comas para Lima Norte) con su fuente web, que no es oficial: verificar contra INEI/IGN y confirmar el criterio de un punto por unidad con el profesor.
 - **ICEN por versión publicada**: HECHO. Cargado en `config/icen.csv` (150 informes del IGP, 2014-01 a 2026-10; se armó con `python -m dengue_pipeline icen-reports <carpeta con los PDF del IGP>`). Queda por confirmar con el equipo qué hacer con las 22 filas de `reports/icen_revision_manual.csv` (año mal escrito o valores repetidos en los informes): hoy quedan fuera. Limitaciones que se declaran: no cubre 2010-2013 (por eso la ablación entrena desde 2014), la columna publicada cambia con los años (ICEN, ICENv3, ICENv5) y 17 de 158 meses cambian de valor entre informes.
 - **Población de Lima Norte**: HECHO. Suma de sus 8 distritos (incluye San Martín de Porres) en el cuadro distrital del INEI 2018-2026 (gob.pe, 31-dic-2025; misma base censo 2017 que el cuadro departamental). Solo existe desde 2018: Lima Norte tiene tasa y niveles de alerta en 2020-2024 (años de prueba); antes de 2018, no. Se corre con `python -m dengue_pipeline population <proy_03_4.xlsx> --districts <cuadro distrital.xlsx>`.
-- Fuente del canal endémico (mediana de 5 años) [SIN FUENTE]; fecha y URL de descarga de cada archivo para el manifiesto.
+- La mediana de 5 años previos se usa como práctica documentada, no validada: Umaña et al. 2026 (JMIR Public Health Surveill, e79914) reporta mediana y ventanas de 5 a 9 años en boletines de Colombia sin recomendarla, y Hussain-Alkhateeb 2018 (PLoS ONE) usa media y desviación estándar. Opción de sensibilidad: `endemic_channel_center: geometric` con desplazamiento 0.001.
+- Fecha y URL de descarga de cada archivo para el manifiesto.
 
 **Verificado el 22-nov-2026**
 - La descarga de NASA POWER (`climate`): 6 unidades, 2009-11-01 a 2024-12-31, 5 540 días por unidad, sin valores -999; 6 semanas incompletas quedan marcadas y sin rellenar. Hash SHA-256 en `data/processed/climate_manifest.json`.
+- La ablación corrió el 22-nov-2026 en sus tres condiciones (`historial`, `clima`, `clima_icen`), todas con `--train-first-year 2014`, en `data/processed/backtest_desde2014/`. Las salidas no son resultados.
 - El flujo de GitHub Actions: pasa en Python 3.11, 3.12 y 3.13.
 - El `Dockerfile`: la imagen se construye y las pruebas pasan dentro (83 pasan, 7 se saltan).
 
@@ -81,7 +83,7 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 - El retraso se mide solo sobre casos que ya llegaron al archivo, así que aparece subestimado (datos.md 3.6).
 - Las instantáneas reales suponen que el archivo de un corte no omite reclasificaciones ni bajas posteriores.
 - El retraso simulado en las demás unidades es un supuesto: se observa solo en Piura.
-- El canal endémico (mediana de las mismas semanas de los 5 años previos) es una referencia débil en dengue: subestima en años de epidemia (error logarítmico absoluto de 3,4 en 2023, con sesgo negativo) y sobrestima tras una epidemia previa (p. ej. Piura 2020). Revisado el 22-nov-2026 con la corrida de prueba: el cálculo es correcto; el error alto viene de que el dengue no es estacionario. Cifras de prueba, no citables.
+- El canal endémico (mediana de las mismas semanas de los 5 años previos) es una referencia débil en dengue: subestima en años de epidemia y sobrestima después de una epidemia previa, porque el dengue no es estacionario.
 - La serie final del CSV nacional es por semana de **inicio de síntomas**; 2025 está incompleto en la costa (no usar para evaluar falsas alarmas).
 
 
