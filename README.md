@@ -5,14 +5,14 @@ disponibles en cada semana (incluido el retraso de notificación). Es un backtes
 
 **Estado (22-nov-2026): etapas 1 a 6 implementadas y probadas, más población/incidencia/niveles de alerta, métricas de alerta, EDA y la ablación con clima (NASA POWER) e ICEN. El CI (Python 3.11 a 3.13), la imagen de Docker y la descarga de clima están verificados. Faltan los autores y las conformidades del equipo: ver "Lo que NO está hecho".**
 
-> **Las salidas de las corridas actuales NO son resultados.** Todas usan un retraso de notificación PROVISIONAL (el de Piura 2025 aplicado a todas las unidades). No se citan ni se publican cifras de desempeño hasta fijar el retraso definitivo.
+> **Las salidas de las corridas actuales NO son resultados.** Todas usan el patrón de retraso de notificación de Piura 2025 aplicado a todas las unidades (escenario base; falta la conformidad del profesor). No se citan ni se publican cifras de desempeño hasta tenerla.
 
 ## Instalación y pruebas
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,notebook,icen]"
-pytest                      # 83 pasan y 7 se saltan sin los archivos reales (probado 22-nov-2026)
+pytest                      # 91 pasan y 7 se saltan sin los archivos reales (probado 22-nov-2026)
 # pruebas que reproducen cifras de datos.md con los CSV reales (con los tres archivos pasan las 90):
 DENGUE_NATIONAL_CSV=/ruta/nacional.csv DENGUE_REGIONAL_CSV=/ruta/regional.csv DENGUE_POPULATION_XLSX=/ruta/proy_03_4.xlsx pytest
 ```
@@ -61,7 +61,7 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 
 **Datos que hay que traer ([FALTA])**
 - Coordenadas: `config/coordenadas.csv` trae una PROPUESTA (punto de la capital departamental; Comas para Lima Norte) con su fuente web, que no es oficial: verificar contra INEI/IGN y confirmar el criterio de un punto por unidad con el profesor.
-- **ICEN por versión publicada**: HECHO. Cargado en `config/icen.csv` (150 informes del IGP, 2014-01 a 2026-10; se armó con `python -m dengue_pipeline icen-reports <carpeta con los PDF del IGP>`). Queda por confirmar con el equipo qué hacer con las 22 filas de `reports/icen_revision_manual.csv` (año mal escrito o valores repetidos en los informes): hoy quedan fuera. Limitaciones que se declaran: no cubre 2010-2013 (por eso la ablación entrena desde 2014), la columna publicada cambia con los años (ICEN, ICENv3, ICENv5) y 17 de 158 meses cambian de valor entre informes.
+- **ICEN por versión publicada**: HECHO. Cargado en `config/icen.csv` (150 informes del IGP, 2014-01 a 2026-10; se armó con `python -m dengue_pipeline icen-reports <carpeta con los PDF del IGP>`). Se excluyeron 22 filas con inconsistencias internas en los informes originales (año mal escrito o valores repetidos; listadas en `reports/icen_revision_manual.csv`); ningún mes de 2014 en adelante quedó sin valor. Limitaciones que se declaran: no cubre 2010-2013 (por eso la ablación entrena desde 2014), la columna publicada cambia con los años (ICEN, ICENv3, ICENv5) y 17 de 158 meses cambian de valor entre informes.
 - **Población de Lima Norte**: HECHO. Suma de sus 8 distritos (incluye San Martín de Porres) en el cuadro distrital del INEI 2018-2026 (gob.pe, 31-dic-2025; misma base censo 2017 que el cuadro departamental). Solo existe desde 2018: Lima Norte tiene tasa y niveles de alerta en 2020-2024 (años de prueba); antes de 2018, no. Se corre con `python -m dengue_pipeline population <proy_03_4.xlsx> --districts <cuadro distrital.xlsx>`.
 - La mediana de 5 años previos se usa como práctica documentada, no validada: Umaña et al. 2026 (JMIR Public Health Surveill, e79914) reporta mediana y ventanas de 5 a 9 años en boletines de Colombia sin recomendarla, y Hussain-Alkhateeb 2018 (PLoS ONE) usa media y desviación estándar. Opción de sensibilidad: `endemic_channel_center: geometric` con desplazamiento 0.001.
 - Fecha y URL de descarga de cada archivo para el manifiesto.
@@ -73,7 +73,7 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 - El `Dockerfile`: la imagen se construye y las pruebas pasan dentro (83 pasan, 7 se saltan).
 
 **Decisiones del equipo [DECISIÓN PENDIENTE]**
-- Protocolo `backtest:` APROBADO por el usuario el 22-nov-2026 (falta la conformidad del profesor/equipo). Siguen abiertos los [PROVISIONAL]: retraso de notificación, semillas, bloque del bootstrap.
+- Protocolo `backtest:` APROBADO por el usuario el 22-nov-2026 (falta la conformidad del profesor/equipo). Retraso de notificación: escenario base Piura 2025, con Piura 2026 y Piura 2023 como sensibilidad y 5 semillas por escenario (criterio fijado antes de ver resultados; falta la conformidad del profesor). Siguen abiertos los [PROVISIONAL]: semilla del bootstrap y bloque del bootstrap.
 - Valores [PROVISIONAL] de `config.yaml` (semanas excluidas al estimar el retraso, retraso máximo, semilla, umbrales de validación, rezagos de clima e ICEN).
 - Tasa semanal: hoy es la incidencia acumulada de 4 semanas con la población del año epidemiológico (propuesta).
 - Autores: `LICENSE` (MIT, elegida el 22-nov-2026; los datos del CDC/INEI tienen sus propios términos) está a nombre de los tres autores del artículo (Melendez Cava, Mantari Flores, Cueva Alcala), igual que `CITATION.cff`. En `CITATION.cff` faltan la versión, la fecha de publicación y el DOI, que no se inventan.
@@ -97,6 +97,19 @@ python -m dengue_pipeline backtest --features clima_icen --example-exog --models
 Salidas en `data/processed/backtest/`: `predictions*.csv.gz`, `metrics_summary*.csv`, `paired_difference*.csv`, `hyperparameters.json`. Las corridas con datos de
 ejemplo llevan el prefijo `EJEMPLO_NO_REAL_`. Todo el bloque `backtest:` de config.yaml es PROPUESTA (ver `reports/protocolo_evaluacion.md`).
 
+### Sensibilidad al retraso de notificación (escenarios y semillas)
+Escenario base: patrón de Piura 2025 (`delay.estimation`). Sensibilidad: Piura 2026 y Piura 2023 (`delay.scenarios`), que encierran al base (2023 con la cola más larga, 2026 con la más corta). Cada escenario se simula con 5 semillas (`delay.seeds`).
+```bash
+python -m dengue_pipeline delay --regional data/raw/piura.csv --all-scenarios       # delay_pmf*.csv y delay_scenarios_summary.csv
+python -m dengue_pipeline simulate --national data/raw/nacional.csv --regional data/raw/piura.csv --scenario piura2023 --seed 20261121   # un triángulo suelto
+python -m dengue_pipeline backtest --train-first-year 2014                          # corrida principal (base, semilla 20261120): hiperparámetros congelados
+python -m dengue_pipeline delay-sensitivity --regional data/raw/piura.csv --train-first-year 2014              # 3 escenarios x 5 semillas, solo condición disponibles
+python -m dengue_pipeline delay-sensitivity --regional data/raw/piura.csv --train-first-year 2014 --features clima   # idem con la ablación
+```
+Salidas en `data/processed/backtest_desde2014/sensibilidad_retraso/`. `delay-sensitivity` reutiliza los hiperparámetros de la corrida principal y no repite la serie final (no depende del retraso). Con el escenario base y la semilla principal reproduce exactamente la corrida principal. Un tiempo de cómputo de unos 5 a 6 minutos por combinación (15 por condición).
+
+Límites que se declaran: el retraso se mide solo en Piura y se aplica a las demás unidades como supuesto; los tres patrones subestiman el retraso real porque solo cuentan casos que ya llegaron al archivo (2023 y 2026 están incompletos en su corte); no se explica por qué 2023 y 2026 difieren mientras no se compruebe.
+
 ```bash
 python -m dengue_pipeline climate --coordinates config/coordenadas.csv --start 20091101 --end 20241231 --downloaded-on AAAA-MM-DD   # necesita red
 python -m dengue_pipeline icen config/icen.csv                       # ICEN conocido en cada semana (versión publicada hasta esa fecha); hacerlo ANTES de --features clima_icen
@@ -109,7 +122,7 @@ python -m dengue_pipeline alerts      # -> alert_metrics.csv, alert_paired_diffe
 ```
 Sensibilidad, tasa de falsa alarma, falsas alarmas sobre alertas y anticipación por episodio, con cortes 50/150 y 100/300 y umbrales "amarillo o más" y "rojo".
 IC por bootstrap de bloques de semanas, por año y por unidad; diferencia pareada entre condiciones. La anticipación por episodio no lleva IC (pocos episodios).
-Las salidas sobre el retraso PROVISIONAL llevan la nota "no citar como resultado".
+Las salidas llevan la nota "no citar como resultado" mientras falte la conformidad del profesor.
 
 ## EDA
 `python -m dengue_pipeline eda` -> figuras `reports/eda_0*.png` y tablas; lectura en `reports/eda_resumen.md`.
