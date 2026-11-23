@@ -3,16 +3,18 @@
 Pipeline reproducible, en Python y por línea de comandos, para evaluar alertas de dengue con los datos
 disponibles en cada semana (incluido el retraso de notificación). Es un backtesting, no un sistema en operación.
 
-**Estado (22-nov-2026): etapas 1 a 6 implementadas y probadas, más población/incidencia/niveles de alerta, métricas de alerta, EDA y la interfaz de la ablación con clima e ICEN. Falta traer datos (coordenadas verificadas, descarga de NASA POWER, población de Lima Norte); el ICEN por versión ya está cargado (2014-2026) y aprobar el protocolo: ver "Lo que NO está hecho".**
+**Estado (22-nov-2026): etapas 1 a 6 implementadas y probadas, más población/incidencia/niveles de alerta, métricas de alerta, EDA y la ablación con clima (NASA POWER) e ICEN. El CI (Python 3.11 a 3.13), la imagen de Docker y la descarga de clima están verificados. Faltan los autores y las conformidades del equipo: ver "Lo que NO está hecho".**
+
+> **Las salidas de las corridas actuales NO son resultados.** Todas usan un retraso de notificación PROVISIONAL (el de Piura 2025 aplicado a todas las unidades). No se citan ni se publican cifras de desempeño hasta fijar el retraso definitivo.
 
 ## Instalación y pruebas
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-pytest                      # 75 pruebas sintéticas y 7 que se saltan sin los archivos reales (probado 22-nov-2026)
-# pruebas que reproducen cifras de datos.md con los CSV reales:
-DENGUE_NATIONAL_CSV=/ruta/nacional.csv DENGUE_REGIONAL_CSV=/ruta/regional.csv pytest
+pip install -e ".[dev,notebook,icen]"
+pytest                      # 83 pasan y 7 se saltan sin los archivos reales (probado 22-nov-2026)
+# pruebas que reproducen cifras de datos.md con los CSV reales (con los tres archivos pasan las 90):
+DENGUE_NATIONAL_CSV=/ruta/nacional.csv DENGUE_REGIONAL_CSV=/ruta/regional.csv DENGUE_POPULATION_XLSX=/ruta/proy_03_4.xlsx pytest
 ```
 
 Probado con Python 3.13 en dos entornos: pandas 3.0.5, numpy 2.5.3, pyyaml 6.0.3, pytest 9.1.1; y una instalación limpia con pandas 3.1.1, numpy 2.5.5, pyyaml 6.0.4, pytest 9.2.0.
@@ -59,19 +61,20 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 
 **Datos que hay que traer ([FALTA])**
 - Coordenadas: `config/coordenadas.csv` trae una PROPUESTA (punto de la capital departamental; Comas para Lima Norte) con su fuente web, que no es oficial: verificar contra INEI/IGN y confirmar el criterio de un punto por unidad con el profesor.
-- **ICEN por versión publicada**: ya cargado en `config/icen.csv` (se armó con `python -m dengue_pipeline icen-reports <carpeta con los PDF del IGP>`). Revisar a mano `reports/icen_revision_manual.csv` (22 filas con año mal escrito o valores repetidos en los informes; no entraron). No cubre 2010-2013 (el IGP publica estos informes desde 2014).
+- **ICEN por versión publicada**: HECHO. Cargado en `config/icen.csv` (150 informes del IGP, 2014-01 a 2026-10; se armó con `python -m dengue_pipeline icen-reports <carpeta con los PDF del IGP>`). Queda por confirmar con el equipo qué hacer con las 22 filas de `reports/icen_revision_manual.csv` (año mal escrito o valores repetidos en los informes): hoy quedan fuera. Limitaciones que se declaran: no cubre 2010-2013 (por eso la ablación entrena desde 2014), la columna publicada cambia con los años (ICEN, ICENv3, ICENv5) y 17 de 158 meses cambian de valor entre informes.
 - **Población de Lima Norte**: HECHO. Suma de sus 8 distritos (incluye San Martín de Porres) en el cuadro distrital del INEI 2018-2026 (gob.pe, 31-dic-2025; misma base censo 2017 que el cuadro departamental). Solo existe desde 2018: Lima Norte tiene tasa y niveles de alerta en 2020-2024 (años de prueba); antes de 2018, no. Se corre con `python -m dengue_pipeline population <proy_03_4.xlsx> --districts <cuadro distrital.xlsx>`.
 - Fuente del canal endémico (mediana de 5 años) [SIN FUENTE]; fecha y URL de descarga de cada archivo para el manifiesto.
 
-**Sin verificar**
-- La descarga de NASA POWER (`climate`) no se ha ejecutado contra la red [NO VERIFICADO]; el entorno donde se preparó no tiene salida a ese sitio.
-- El flujo de GitHub Actions (`.github/workflows/ci.yml`) y el `Dockerfile` no se han ejecutado ni construido [NO VERIFICADO].
+**Verificado el 22-nov-2026**
+- La descarga de NASA POWER (`climate`): 6 unidades, 2009-11-01 a 2024-12-31, 5 540 días por unidad, sin valores -999; 6 semanas incompletas quedan marcadas y sin rellenar. Hash SHA-256 en `data/processed/climate_manifest.json`.
+- El flujo de GitHub Actions: pasa en Python 3.11, 3.12 y 3.13.
+- El `Dockerfile`: la imagen se construye y las pruebas pasan dentro (83 pasan, 7 se saltan).
 
 **Decisiones del equipo [DECISIÓN PENDIENTE]**
 - Protocolo `backtest:` APROBADO por el usuario el 22-nov-2026 (falta la conformidad del profesor/equipo). Siguen abiertos los [PROVISIONAL]: retraso de notificación, semillas, bloque del bootstrap.
 - Valores [PROVISIONAL] de `config.yaml` (semanas excluidas al estimar el retraso, retraso máximo, semilla, umbrales de validación, rezagos de clima e ICEN).
 - Tasa semanal: hoy es la incidencia acumulada de 4 semanas con la población del año epidemiológico (propuesta).
-- Autores: `LICENSE` (MIT, elegida por el asistente a pedido del usuario el 22-nov-2026; los datos del CDC/INEI tienen sus propios términos) lleva `[FALTA: autores del artículo]`; completar también `docs/CITATION.cff.plantilla`.
+- Autores: `LICENSE` (MIT, elegida el 22-nov-2026; los datos del CDC/INEI tienen sus propios términos) lleva `[FALTA: autores del artículo]`; completar también `docs/CITATION.cff.plantilla`.
 
 ## Límites que se declaran
 
@@ -92,8 +95,8 @@ Salidas en `data/processed/backtest/`: `predictions*.csv.gz`, `metrics_summary*.
 ejemplo llevan el prefijo `EJEMPLO_NO_REAL_`. Todo el bloque `backtest:` de config.yaml es PROPUESTA (ver `reports/protocolo_evaluacion.md`).
 
 ```bash
-python -m dengue_pipeline climate --coordinates config/coordenadas.csv --start 20091101 --end 20241231 --downloaded-on AAAA-MM-DD   # necesita red [NO VERIFICADO]
-python -m dengue_pipeline icen config/icen.csv                       # ICEN conocido en cada semana (versión publicada hasta esa fecha)
+python -m dengue_pipeline climate --coordinates config/coordenadas.csv --start 20091101 --end 20241231 --downloaded-on AAAA-MM-DD   # necesita red
+python -m dengue_pipeline icen config/icen.csv                       # ICEN conocido en cada semana (versión publicada hasta esa fecha); hacerlo ANTES de --features clima_icen
 ```
 Reglas: el clima de la semana t-k entra con k >= 1; el ICEN es el valor publicado hasta el fin de cada semana; la ablación reutiliza los hiperparámetros de `historial`.
 
@@ -112,7 +115,7 @@ Las salidas sobre el retraso PROVISIONAL llevan la nota "no citar como resultado
 `notebooks/ejecutar_pipeline.ipynb` ejecuta todo en orden (instalar con `pip install -e ".[dev,notebook]"`). Revisar primero su celda de parámetros.
 
 ## Integración continua y contenedor
-`.github/workflows/ci.yml` (Python 3.11 a 3.13, `pytest`) y `Dockerfile`: preparados, **sin ejecutar** [NO VERIFICADO]. `make test` corre las pruebas.
+`.github/workflows/ci.yml` (Python 3.11 a 3.13, `pytest`) y `Dockerfile`: verificados el 22-nov-2026 (CI en GitHub Actions; imagen construida y pruebas dentro del contenedor). `make test` corre las pruebas.
 
 ## Población, incidencia y niveles de alerta (nuevo)
 ```bash
