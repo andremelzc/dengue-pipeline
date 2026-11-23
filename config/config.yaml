@@ -39,12 +39,16 @@ exogenous:               # ablación: historial | clima | clima_icen. Rezagos en
   icen_lags_weeks: [0, 4, 8]         # ICEN temporal: el valor que existía en cada fecha (icen_weekly). Serie real en config/icen.csv (informes IGP 2014-01 a 2026-10); NO cubre 2010-2013
 
 delay:                   # retraso de notificación (etapa 4)
-  estimation:
+  estimation:            # ESCENARIO BASE (piura2025): patrón de Piura 2025 del corte de 2026
     cut: "20260702"      # corte regional de 2026
     onset_year: 2025     # datos.md 3.6 y pipeline.md 3: estimar en 2025 y probar en 2026
+  scenarios:             # sensibilidad: encierran al base (2023 con la cola más larga, 2026 con la más corta)
+    piura2026: {cut: "20260702", onset_year: 2026}
+    piura2023: {cut: "20230517", onset_year: 2023}
   exclude_last_weeks: 4  # [PROVISIONAL] semanas finales del corte que se excluyen por estar incompletas
   max_delay_weeks: 26    # [PROVISIONAL] retraso máximo modelado
-  seed: 20261120         # [PROVISIONAL] semilla de la simulación
+  seed: 20261120         # semilla de la corrida principal (= primera de `seeds`)
+  seeds: [20261120, 20261121, 20261122, 20261123, 20261124]   # 5 semillas por escenario (sensibilidad); valores de trabajo
 
 validation:
   last_year_ratio_threshold: 0.25     # [PROVISIONAL] alerta si el último año < 25 % del anterior (caso 2025 en la costa)
