@@ -10,7 +10,8 @@ on:
 jobs:
   fijo:
     name: pytest (3.13.3, versiones fijas)
-    runs-on: ubuntu-latest
+    # ubuntu-24.04 y no ubuntu-latest: para Ubuntu 26.04 GitHub no ofrece Python 3.13.3 (solo 3.13.16 o posterior).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
