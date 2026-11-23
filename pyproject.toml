@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dengue-pipeline"
+version = "0.1.0"
+description = "Pipeline reproducible para evaluar alertas de dengue con los datos disponibles en cada semana"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = ["pandas>=2.2", "numpy>=1.26", "pyyaml>=6", "scikit-learn>=1.4", "statsmodels>=0.14", "openpyxl>=3.1", "matplotlib>=3.8"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+notebook = ["jupyterlab>=4", "nbconvert>=7"]
+icen = ["pdfplumber>=0.10"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

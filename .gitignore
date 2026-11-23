@@ -1,0 +1,21 @@
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+reports/*
+!reports/.gitkeep
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# Los informes escritos a mano sí se versionan; lo generado (figuras, tablas, validación) se reproduce con el pipeline.
+!reports/protocolo_evaluacion.md
+!reports/revision_protocolo.md
+!reports/eda_resumen.md
+
+.venv/
+build/
+dist/
+.ipynb_checkpoints/
+.env
+!reports/icen_revision_manual.csv
