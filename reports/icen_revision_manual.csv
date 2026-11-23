@@ -1,0 +1,23 @@
+month,value,published_on,kind,serie,report,file,line,motivo
+2020-12,-0.58,2020-02-13,definitivo,ICENv3,2020-01,INFORME_TECNICO_EL_NINO_2020_01_INSTITITO_GEOFISICO_DEL_PERU.pdf,2020 Diciembre -0.58 Neutra -0.23 Neutra -0.25 Neutra,definitivo_de_un_mes_posterior_a_la_fecha_del_informe
+2019-01,-0.42,2020-02-13,temporal,ICENv3,2020-01,INFORME_TECNICO_EL_NINO_2020_01_INSTITITO_GEOFISICO_DEL_PERU.pdf,2019 Enero -0.42 Neutra 0.04 Neutra -0.11 Neutra,temporal_de_un_mes_ya_definitivo (¿año mal escrito en el informe?)
+2020-02,-0.14,2020-02-13,temporal,ICENv3,2020-01,INFORME_TECNICO_EL_NINO_2020_01_INSTITITO_GEOFISICO_DEL_PERU.pdf,2020 Febrero -0.14 Neutra 0.07 Neutra 0.01 Neutra,temporal_de_un_mes_ya_definitivo (¿año mal escrito en el informe?)
+2025-01,-0.43,2026-02-24,temporal,ICENtmp,2026-01,IT-PpR-El Ni#U00f1o-IGP-2026-1.pdf,2025 Enero –0.43 Neutra –0.78 Neutra,temporal_de_un_mes_ya_definitivo (¿año mal escrito en el informe?)
+2025-02,0.34,2026-03-23,temporal,ICENtmp,2026-02,IT-PpR-El-Ni#U00f1o-IGP-2026-2.pdf,2025 Febrero 0.34 Neutra –0.09 Neutra,temporal_de_un_mes_ya_definitivo (¿año mal escrito en el informe?)
+2010-12,0.13,2019-12-13,temporal,ICENv3,2019-11,IT_EL_NINO_2019_11.pdf,2010 Diciembre 0.13 Neutra 0.03 Neutra 0.14 Neutra,temporal_de_un_mes_ya_definitivo (¿año mal escrito en el informe?)
+2013-01,-0.42,2014-03-04,temporal,ICENtmp,2014-02,Informe_Tecnico_PPR_El_Nino_IGP_201402.pdf,2013 Enero -0.42 Neutro 2013/12-2014/01: ERSST;,temporal_de_un_mes_ya_definitivo (¿año mal escrito en el informe?)
+2013-02,-0.58,2014-04-02,temporal,ICENtmp,2014-03,Informe_Tecnico_PPR_El_Nino_IGP_201403.pdf,2013 Febrero -0.58 Neutro 2014/01-2014/02: ERSST;,temporal_de_un_mes_ya_definitivo (¿año mal escrito en el informe?)
+2024-06,-0.88,2024-07-11,temporal,ICENtmp,2024-06,IT-PpR-El-Ni#U00f1o-IGP-2024-06.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2024-06,-0.63,2024-07-11,temporal,ICENtmp,2024-06,IT-PpR-El-Ni#U00f1o-IGP-2024-06.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2018-11,0.54,2019-04-15,definitivo,ICEN,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2018-12,0.81,2019-04-15,definitivo,ICEN,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2019-01,0.65,2019-04-15,definitivo,ICEN,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2019-02,0.34,2019-04-15,definitivo,ICEN,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2019-03,0.2,2019-04-15,temporal,ICENtmp,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2018-11,0.58,2019-04-15,definitivo,ICEN,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2018-12,0.89,2019-04-15,definitivo,ICEN,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2019-01,0.87,2019-04-15,definitivo,ICEN,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2019-02,0.59,2019-04-15,definitivo,ICEN,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2019-03,0.38,2019-04-15,temporal,ICENtmp,2019-03,IT_EL_NINO_2019_03.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2019-07,-0.16,2019-07-12,temporal,ICENv3,2019-06,IT_EL_NINO_2019_06.pdf,,valores_distintos_para_el_mismo_mes_y_fecha
+2019-07,-0.54,2019-07-12,temporal,ICENv3,2019-07,IT_EL_NINO_2019_07.pdf,,valores_distintos_para_el_mismo_mes_y_fecha

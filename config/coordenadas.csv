@@ -1,0 +1,7 @@
+unit,lat,lon,source
+PIURA,-5.200833,-80.625278,"Ciudad de Piura. https://en.wikivoyage.org/wiki/Northern_Coast_(Peru) [PROPUESTA: wiki no oficial; verificar contra INEI/IGN]"
+LAMBAYEQUE,-6.77,-79.84,"Ciudad de Chiclayo. https://time-ok.com/coordinates/peru [PROPUESTA: 2 decimales, no oficial; verificar]"
+LA_LIBERTAD,-8.111944,-79.028889,"Ciudad de Trujillo. https://en.wikivoyage.org/wiki/Northern_Coast_(Peru) [PROPUESTA: wiki no oficial; verificar contra INEI/IGN]"
+TUMBES,-3.570833,-80.459722,"Ciudad de Tumbes. https://en.wikivoyage.org/wiki/Northern_Coast_(Peru) [PROPUESTA: wiki no oficial; verificar contra INEI/IGN]"
+SAN_MARTIN,-6.03441,-76.97423,"Ciudad de Moyobamba (capital; la ciudad mayor es Tarapoto). https://www.geodatos.net/en/coordinates/peru/moyobamba [PROPUESTA: no oficial; verificar]"
+LIMA_NORTE,-11.933,-77.067,"Distrito de Comas (un punto para los 7 distritos). https://www.wikipedia.org/wiki/Comas_District,_Lima [PROPUESTA: no oficial; verificar]"
