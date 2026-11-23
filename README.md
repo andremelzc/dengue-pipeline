@@ -61,14 +61,14 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 
 **Datos que hay que traer ([FALTA])**
 - Coordenadas: `config/coordenadas.csv` trae una PROPUESTA (punto de la capital departamental; Comas para Lima Norte) con su fuente web, que no es oficial: verificar contra INEI/IGN y confirmar el criterio de un punto por unidad con el profesor.
-- **ICEN por versión publicada**: HECHO. Cargado en `config/icen.csv` (150 informes del IGP, 2014-01 a 2026-10; se armó con `python -m dengue_pipeline icen-reports <carpeta con los PDF del IGP>`). Se excluyeron 22 filas con inconsistencias internas en los informes originales (año mal escrito o valores repetidos; listadas en `reports/icen_revision_manual.csv`); ningún mes de 2014 en adelante quedó sin valor. Limitaciones que se declaran: no cubre 2010-2013 (por eso la ablación entrena desde 2014), la columna publicada cambia con los años (ICEN, ICENv3, ICENv5) y 17 de 158 meses cambian de valor entre informes.
+- **ICEN por versión publicada**: HECHO. Cargado en `config/icen.csv` (150 informes del IGP, 2014-01 a 2026-10; se armó con `python -m dengue_pipeline icen-reports <carpeta con los PDF del IGP>`). Se excluyeron 22 filas con inconsistencias internas en los informes originales (año mal escrito o valores repetidos; listadas en `reports/icen_revision_manual.csv`); ningún mes de 2014 en adelante quedó sin valor. Limitaciones que se declaran: no cubre 2010-2013 (por eso la ablación entrena desde 2014, con `--train-first-year 2014`), la columna publicada cambia con los años (ICEN, ICENv3, ICENv5) y 17 de 158 meses cambian de valor entre informes.
 - **Población de Lima Norte**: HECHO. Suma de sus 8 distritos (incluye San Martín de Porres) en el cuadro distrital del INEI 2018-2026 (gob.pe, 31-dic-2025; misma base censo 2017 que el cuadro departamental). Solo existe desde 2018: Lima Norte tiene tasa y niveles de alerta en 2020-2024 (años de prueba); antes de 2018, no. Se corre con `python -m dengue_pipeline population <proy_03_4.xlsx> --districts <cuadro distrital.xlsx>`.
 - La mediana de 5 años previos se usa como práctica documentada, no validada: Umaña et al. 2026 (JMIR Public Health Surveill, e79914) reporta mediana y ventanas de 5 a 9 años en boletines de Colombia sin recomendarla, y Hussain-Alkhateeb 2018 (PLoS ONE) usa media y desviación estándar. Opción de sensibilidad: `endemic_channel_center: geometric` con desplazamiento 0.001.
 - Fecha y URL de descarga de cada archivo para el manifiesto.
 
 **Verificado el 22-nov-2026**
 - La descarga de NASA POWER (`climate`): 6 unidades, 2009-11-01 a 2024-12-31, 5 540 días por unidad, sin valores -999; 6 semanas incompletas quedan marcadas y sin rellenar. Hash SHA-256 en `data/processed/climate_manifest.json`.
-- La ablación corrió el 22-nov-2026 en sus tres condiciones (`historial`, `clima`, `clima_icen`), todas con `--train-first-year 2014`, en `data/processed/backtest_desde2014/`. Las salidas no son resultados.
+- **Corrección del 23-nov-2026 (entrenamiento desde 2014).** La ablación del 22-nov-2026 se corrió con `--train-first-year 2014`, pero esa opción solo cambiaba los bordes de los pliegues de la elección de hiperparámetros (con 2014 quedaba 1 pliegue) y no limitaba el entrenamiento: las tres condiciones entrenaron desde 2010. Ya está corregido: ahora limita el entrenamiento y la elección de hiperparámetros, y los pliegues no dependen de ella. Las salidas del 22-nov-2026 no se usan; la ablación se repite desde 2014 [PENDIENTE: confirmar que terminó].
 - El flujo de GitHub Actions: pasa en Python 3.11, 3.12 y 3.13.
 - El `Dockerfile`: la imagen se construye y las pruebas pasan dentro (83 pasan, 7 se saltan).
 
@@ -102,11 +102,11 @@ Escenario base: patrón de Piura 2025 (`delay.estimation`). Sensibilidad: Piura 
 ```bash
 python -m dengue_pipeline delay --regional data/raw/piura.csv --all-scenarios       # delay_pmf*.csv y delay_scenarios_summary.csv
 python -m dengue_pipeline simulate --national data/raw/nacional.csv --regional data/raw/piura.csv --scenario piura2023 --seed 20261121   # un triángulo suelto
-python -m dengue_pipeline backtest --train-first-year 2014                          # corrida principal (base, semilla 20261120): hiperparámetros congelados
-python -m dengue_pipeline delay-sensitivity --regional data/raw/piura.csv --train-first-year 2014              # 3 escenarios x 5 semillas, solo condición disponibles
-python -m dengue_pipeline delay-sensitivity --regional data/raw/piura.csv --train-first-year 2014 --features clima   # idem con la ablación
+python -m dengue_pipeline backtest                                              # corrida principal (base, semilla 20261120, entrenamiento desde 2010): hiperparámetros congelados
+python -m dengue_pipeline delay-sensitivity --regional data/raw/piura.csv           # 3 escenarios x 5 semillas, solo condición disponibles (usa los hiperparámetros de la corrida principal)
+python -m dengue_pipeline backtest --train-first-year 2014 --features clima          # ablación desde 2014: correr antes `backtest --train-first-year 2014` (historial); las tres condiciones con el mismo año
 ```
-Salidas en `data/processed/backtest_desde2014/sensibilidad_retraso/`. `delay-sensitivity` reutiliza los hiperparámetros de la corrida principal y no repite la serie final (no depende del retraso). Con el escenario base y la semilla principal reproduce exactamente la corrida principal. Un tiempo de cómputo de unos 5 a 6 minutos por combinación (15 por condición).
+Salidas en `data/processed/backtest/sensibilidad_retraso/` (o `backtest_desde2014/sensibilidad_retraso/` si se usa `--train-first-year 2014`). `delay-sensitivity` reutiliza los hiperparámetros de la corrida principal y no repite la serie final (no depende del retraso). Con el escenario base y la semilla principal reproduce exactamente la corrida principal. Un tiempo de cómputo de unos 5 a 6 minutos por combinación (15 por condición).
 
 Límites que se declaran: el retraso se mide solo en Piura y se aplica a las demás unidades como supuesto; los tres patrones subestiman el retraso real porque solo cuentan casos que ya llegaron al archivo (2023 y 2026 están incompletos en su corte); no se explica por qué 2023 y 2026 difieren mientras no se compruebe.
 
@@ -147,5 +147,5 @@ incidencia acumulada de 4 semanas (t y las 3 anteriores) por 100 000 [DECISIÓN 
 ## Cambios del 22-nov-2026 (tarde)
 - Lima Norte pasa a 8 distritos (se agregó San Martín de Porres). Sus casos 2010-2024 suben de 40 854 a 46 690; las demás unidades no cambian (serie final: diferencia máxima de predicciones 5e-11).
 - La simulación del retraso ahora usa una semilla por unidad (derivada de la semilla y el nombre de la unidad): antes una sola secuencia aleatoria hacía que un cambio en una unidad moviera las simulaciones de otras. Hay una prueba. Las predicciones de la condición `disponibles` cambian respecto a corridas anteriores (siguen siendo de prueba, retraso PROVISIONAL).
-- `backtest --train-first-year 2014` corre con entrenamiento desde 2014 (ICEN solo existe desde 2014) y guarda en `data/processed/backtest_desde2014/`. Para la ablación, correr las tres condiciones con este mismo valor.
+- `backtest --train-first-year 2014` limita el entrenamiento y la elección de hiperparámetros a orígenes desde 2014 (ICEN solo existe desde 2014) y guarda en `data/processed/backtest_desde2014/` (desde el 23-nov-2026; antes solo cambiaba los pliegues). Con 2014 la elección de hiperparámetros usa 2 pliegues (validación 2016-2017 y 2018-2019) en vez de 3, porque el primero queda sin datos de entrenamiento. La binomial negativa omite las primeras semanas de 2014 sin ICEN conocido. Para la ablación, correr las tres condiciones con este mismo valor.
 - `data/manifest.json`: fecha de descarga 2026-11-20 (indicada por el usuario).
