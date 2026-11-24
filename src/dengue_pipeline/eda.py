@@ -1,7 +1,7 @@
 """Exploración de datos (EDA): series por unidad, estacionalidad, años de brote, ceros, autocorrelación y retraso.
 
 Genera figuras PNG y tablas CSV en reports/. Todo sale de la serie final (weekly_final.csv), de la incidencia
-(weekly_incidence.csv, necesita población: Lima Norte queda sin tasa) y de delay_pmf.csv (retraso PROVISIONAL, Piura 2025).
+(weekly_incidence.csv, necesita población: Lima Norte queda sin tasa) y de delay_pmf.csv (retraso de notificación, patrón base Piura 2025).
 Nada aquí es un resultado de desempeño de modelos.
 """
 from __future__ import annotations
@@ -141,20 +141,31 @@ def fig_acf(weekly, out, nlags=26):
     return pd.DataFrame(rows)
 
 
-def fig_delay(pmf, out):
-    fig, ax = _fig(1, 1, 7, 3.6)
-    ax.bar(pmf["delay_weeks"], pmf["pmf"], color="#2a78d6", width=0.7, label="proporción en cada retraso")
-    ax.plot(pmf["delay_weeks"], pmf["cum"], color=INK2, lw=1.2, label="acumulada")
-    ax.set_ylim(0, 1.02)
-    ax.set_xlabel("retraso de notificación (semanas)", fontsize=8, color=INK2)
-    ax.set_title("Retraso de notificación, Piura 2025 (PROVISIONAL: semanas finales excluidas y retraso máximo sin decidir)", loc="left", fontsize=9, color=INK)
-    ax.legend(frameon=False, fontsize=8, labelcolor=INK2)
-    fig.tight_layout()
+def fig_delay(pmfs, out, subtitle="últimas 4 semanas, retrasos negativos y mayores de 26 semanas excluidos"):
+    """Un panel por patrón de retraso (misma escala): barras = proporción en cada retraso, línea = acumulada.
+
+    `pmfs` es {nombre: DataFrame(delay_weeks, pmf, cum)} o un solo DataFrame (se dibuja como un patrón).
+    """
+    if isinstance(pmfs, pd.DataFrame):
+        pmfs = {"piura2025": pmfs}
+    n = len(pmfs)
+    fig, axes = _fig(1, n, 3.6 * n + 0.6, 3.8, sharex=True, sharey=True)
+    axes = np.atleast_1d(axes)
+    for ax, (name, pmf), c in zip(axes, pmfs.items(), COLORS):
+        ax.bar(pmf["delay_weeks"], pmf["pmf"], color=c, width=0.7, label="proporción")
+        ax.plot(pmf["delay_weeks"], pmf["cum"], color=INK2, lw=1.2, label="acumulada")
+        ax.set_ylim(0, 1.02)
+        ax.set_title(name, loc="left", fontsize=9, color=INK)
+        ax.set_xlabel("retraso de notificación (semanas)", fontsize=8, color=INK2)
+    axes[0].legend(frameon=False, fontsize=8, labelcolor=INK2, loc="center right")
+    fig.suptitle(f"Retraso de notificación por patrón ({subtitle})", x=0.01, ha="left", fontsize=10, color=INK)
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
     fig.savefig(out / "eda_06_retraso.png", dpi=150, facecolor=SURFACE)
     plt.close(fig)
 
 
-def run_eda(weekly: pd.DataFrame, inc: pd.DataFrame, pmf: pd.DataFrame, out_dir: str | Path) -> dict:
+def run_eda(weekly: pd.DataFrame, inc: pd.DataFrame, pmf: pd.DataFrame, out_dir: str | Path,
+            scenario_pmfs: dict | None = None) -> dict:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     fig_series(weekly, out)
@@ -162,7 +173,7 @@ def run_eda(weekly: pd.DataFrame, inc: pd.DataFrame, pmf: pd.DataFrame, out_dir:
     mx = fig_outbreak_years(inc, out)
     zeros = fig_zeros(weekly, out)
     ac = fig_acf(weekly, out)
-    fig_delay(pmf, out)
+    fig_delay(scenario_pmfs or pmf, out)
 
     annual = weekly.groupby(["unit", "year"])["cases"].sum().unstack("year")
     d = inc[inc["population"].notna()]

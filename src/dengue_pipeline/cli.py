@@ -188,7 +188,13 @@ def _cmd_icen(a, cfg):
 
 
 def _cmd_eda(a, cfg):
-    r = eda.run_eda(pd.read_csv(a.weekly), pd.read_csv(a.incidence), pd.read_csv(a.delay), a.out)
+    base = Path(a.delay)
+    pmfs = {delay_scenarios.BASE: pd.read_csv(base)}                    # base primero; luego los de sensibilidad si existen
+    for name in cfg["delay"].get("scenarios", {}):
+        f = base.with_name(f"{base.stem}_{name}{base.suffix}")
+        if f.exists():
+            pmfs[name] = pd.read_csv(f)
+    r = eda.run_eda(pd.read_csv(a.weekly), pd.read_csv(a.incidence), pd.read_csv(base), a.out, scenario_pmfs=pmfs)
     print(r["stats"].round(3).to_string())
     return 0
 
