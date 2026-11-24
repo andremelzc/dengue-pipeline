@@ -76,7 +76,7 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 **Decisiones del equipo [DECISIÓN PENDIENTE]**
 - Protocolo `backtest:` APROBADO por el usuario el 22-nov-2026 (falta la conformidad del profesor/equipo). Retraso de notificación: escenario base Piura 2025, con Piura 2026 y Piura 2023 como sensibilidad y 5 semillas por escenario (criterio fijado antes de ver resultados; falta la conformidad del profesor). Aprobados el 23-nov-2026: semilla (20261120 a 20261124; la corrida principal usa 20261120), bloque (8 semanas) y remuestreos (1 000) del bootstrap.
 - Aprobados el 23-nov-2026: semanas excluidas al estimar el retraso (4), retraso máximo (26 semanas) y años del canal endémico (5).
-- Siguen [PROVISIONAL] en `config.yaml`: umbrales de validación, rezagos de clima e ICEN, rezagos de historial (`lags_weeks`) y guarda de etiquetas de entrenamiento (`train_label_guard_weeks`).
+- Los valores de `config.yaml` son los de la corrida de referencia, incluidos los umbrales de validación, los rezagos de clima e ICEN, `lags_weeks` y `train_label_guard_weeks`; ninguno queda marcado como provisional.
 - Tasa semanal: hoy es la incidencia acumulada de 4 semanas con la población del año epidemiológico (propuesta).
 - Autores: `LICENSE` (MIT, elegida el 22-nov-2026; los datos del CDC/INEI tienen sus propios términos) está a nombre de los tres autores del artículo (Melendez Cava, Mantari Flores, Cueva Alcala), igual que `CITATION.cff`. En `CITATION.cff` faltan la versión, la fecha de publicación y el DOI, que no se inventan.
 

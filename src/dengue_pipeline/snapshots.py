@@ -15,7 +15,7 @@ Límites que se declaran:
 - Las instantáneas reales se reconstruyen filtrando el archivo de un corte por fecha de notificación. Eso
   supone que no hubo reclasificaciones ni bajas posteriores que el archivo no registre.
 - El retraso medido solo incluye casos que ya llegaron al archivo, así que aparece subestimado (datos.md 3.6).
-- Los parámetros marcados [PROVISIONAL] en config.yaml no están decididos.
+- Los parámetros de config.yaml son los de la corrida de referencia.
 """
 from __future__ import annotations
 
