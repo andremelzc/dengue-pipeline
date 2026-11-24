@@ -87,14 +87,19 @@ def delay_pmf(reg: pd.DataFrame, cut: str, onset_year: int, exclude_last_weeks: 
             "cum": np.cumsum(pmf), "mean_delay_weeks": float((pmf * np.arange(len(pmf))).sum())}
 
 
-def simulate_triangle(final_weekly: pd.DataFrame, pmf: np.ndarray, seed: int) -> pd.DataFrame:
+def simulate_triangle(final_weekly: pd.DataFrame, pmf: np.ndarray, seed: int, delay_scale: int = 1) -> pd.DataFrame:
     """Triángulo simulado: cada caso de la serie final recibe un retraso en semanas sorteado de `pmf`.
 
     `final_weekly` necesita columnas unit, abs_week y cases (casos por semana de inicio, serie final).
     Se sortea de forma multinomial por celda (unidad, semana de inicio): el total por celda se conserva. Cada unidad usa su propia semilla derivada de (semilla, nombre de la unidad).
     Con la misma semilla el resultado es idéntico. El retraso simulado es un SUPUESTO que se declara
     (observado solo en Piura; se usa la misma distribución en las demás unidades).
+
+    `delay_scale` (entero >= 1, por defecto 1 = sin cambio) multiplica el retraso sorteado, en semanas, DESPUÉS de sortearlo: la
+    secuencia de números aleatorios es la misma que con 1. Es una prueba de estrés de robustez, no una estimación del retraso de otra región.
     """
+    if int(delay_scale) != delay_scale or delay_scale < 1:
+        raise ValueError("delay_scale debe ser un entero >= 1")
     pmf = np.asarray(pmf, dtype=float)
     pmf = pmf / pmf.sum()
     cells_all = final_weekly.loc[final_weekly["cases"] > 0, ["unit", "abs_week", "cases"]].reset_index(drop=True)
@@ -108,7 +113,7 @@ def simulate_triangle(final_weekly: pd.DataFrame, pmf: np.ndarray, seed: int) ->
         parts.append(pd.DataFrame({
             "unit": unit,
             "onset_week": aw[cell_idx],
-            "avail_week": aw[cell_idx] + delay,
+            "avail_week": aw[cell_idx] + delay * int(delay_scale),
             "n": draws[cell_idx, delay],
         }))
     tri = pd.concat(parts, ignore_index=True)

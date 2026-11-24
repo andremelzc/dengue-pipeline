@@ -218,6 +218,10 @@ def _cmd_delay_sensitivity(a, cfg):
 
     Reutiliza los hiperparámetros congelados de la corrida principal (hay que haber corrido antes `backtest` con el mismo
     --train-first-year). La serie final no depende del retraso, así que no se repite.
+
+    Con `--delay-scale 2 4` es una PRUEBA DE ESTRÉS de robustez: el retraso sorteado se multiplica por la escala (no estima el retraso
+    de otra región). Corre solo el escenario base (salvo que se pida otro con --scenarios), con las semillas de config.yaml, y guarda
+    cada escala en su propia carpeta (`estres_retraso_x<escala>`), distinta de `sensibilidad_retraso`.
     """
     from . import backtest, metrics
     weekly = pd.read_csv(a.weekly)
@@ -234,28 +238,42 @@ def _cmd_delay_sensitivity(a, cfg):
     frozen = backtest.load_frozen_params(hp)
     exog, tag = _exog_for(a, weekly, units, cfg)
     reg = read_strict(a.regional)
-    names = a.scenarios.split(",") if a.scenarios else list(delay_scenarios.scenarios(cfg))
+    stress = a.delay_scale is not None
+    scales = list(dict.fromkeys(a.delay_scale)) if stress else [1]
+    default_names = [delay_scenarios.BASE] if stress else list(delay_scenarios.scenarios(cfg))
+    names = a.scenarios.split(",") if a.scenarios else default_names
     seeds = delay_scenarios.seeds(cfg)[: a.n_seeds] if a.n_seeds else delay_scenarios.seeds(cfg)
     suffix = "" if a.features == "historial" else f"_{a.features}"
-    sdir = out / "sensibilidad_retraso"
+    D = cfg["delay"]["max_delay_weeks"]
     b = cfg["backtest"]["bootstrap"]
-    rows = []
-    for name in names:
-        pmf = delay_scenarios.estimate(reg, cfg, name)["pmf"]
-        for seed in seeds:
-            tri = snapshots.simulate_triangle(weekly, pmf, seed)
-            t = delay_scenarios.tag(name, seed)
-            pred, info = backtest.run_backtest(weekly, tri, cfg, models=models, conditions=("disponibles",), out_dir=sdir,
-                                               features=a.features, exog=exog, params_by_h=frozen,
-                                               out_name=f"{tag}predictions{suffix}_{t}.csv.gz")
-            summ = metrics.summarize(pred, b["block_weeks"], b["n_resamples"], b["ci"], cfg["backtest"]["seed"])
-            summ.insert(0, "semilla", seed)
-            summ.insert(0, "escenario", name)
-            summ.insert(0, "features", a.features)
-            rows.append(summ)
-            print(f"[{t}] {len(pred)} predicciones; fallbacks NB: {len(info.get('negbin_fallbacks', []))}")
-    pd.concat(rows, ignore_index=True).to_csv(sdir / f"{tag}metrics_summary{suffix}_sensibilidad_retraso.csv", index=False)
-    print(f"Resumen: {sdir / (tag + 'metrics_summary' + suffix + '_sensibilidad_retraso.csv')}")
+    for scale in scales:
+        sdir = out / (f"estres_retraso_x{scale}" if stress else "sensibilidad_retraso")
+        label = f"_estres_retraso_x{scale}" if stress else "_sensibilidad_retraso"
+        rows = []
+        for name in names:
+            pmf = delay_scenarios.estimate(reg, cfg, name)["pmf"]
+            for seed in seeds:
+                tri = snapshots.simulate_triangle(weekly, pmf, seed, delay_scale=scale)
+                t = delay_scenarios.tag(name, seed, scale)
+                pred, info = backtest.run_backtest(weekly, tri, cfg, models=models, conditions=("disponibles",), out_dir=sdir,
+                                                   features=a.features, exog=exog, params_by_h=frozen,
+                                                   out_name=f"{tag}predictions{suffix}_{t}.csv.gz")
+                summ = metrics.summarize(pred, b["block_weeks"], b["n_resamples"], b["ci"], cfg["backtest"]["seed"])
+                extra = ""
+                if stress:
+                    # el tensor de datos disponibles trunca el retraso en D: lo que lo supera se cuenta como conocido a las D semanas
+                    share = delay_scenarios.share_beyond_max(tri, D)
+                    summ.insert(0, "prop_casos_retraso_mayor_que_D", share)
+                    summ.insert(0, "escala_retraso", scale)
+                    extra = f"; retraso x{scale}: {100 * share:.2f} % de los casos con retraso > {D} semanas (se cuentan como conocidos a las {D})"
+                summ.insert(0, "semilla", seed)
+                summ.insert(0, "escenario", name)
+                summ.insert(0, "features", a.features)
+                rows.append(summ)
+                print(f"[{t}] {len(pred)} predicciones; fallbacks NB: {len(info.get('negbin_fallbacks', []))}{extra}")
+        dest = sdir / f"{tag}metrics_summary{suffix}{label}.csv"
+        pd.concat(rows, ignore_index=True).to_csv(dest, index=False)
+        print(f"Resumen: {dest}")
     return 0
 
 
@@ -400,6 +418,10 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--weekly", default="data/processed/weekly_final.csv")
     s.add_argument("--scenarios", default=None, help="lista separada por comas (por defecto todos)")
     s.add_argument("--n-seeds", type=int, default=None, help="solo las primeras N semillas (por defecto todas)")
+    s.add_argument("--delay-scale", type=int, nargs="+", choices=[2, 4], default=None, metavar="ESCALA",
+                   help="PRUEBA DE ESTRÉS (2 y/o 4): multiplica el retraso sorteado, en semanas. Solo escenario base (salvo --scenarios), "
+                        "condición disponibles, hiperparámetros congelados; guarda en estres_retraso_x<escala>, no en sensibilidad_retraso. "
+                        "No estima el retraso de otra región")
     s.add_argument("--models", default=None, help="lista separada por comas (por defecto los cuatro)")
     s.add_argument("--out", default="data/processed/backtest")
     s.set_defaults(fn=_cmd_delay_sensitivity)

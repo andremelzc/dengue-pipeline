@@ -37,8 +37,18 @@ def seeds(cfg: dict) -> list[int]:
     return lst
 
 
-def tag(name: str, seed: int) -> str:
-    return f"{name}_s{seed}"
+def tag(name: str, seed: int, scale: int = 1) -> str:
+    """Etiqueta de archivo; con escala 1 es la de siempre (`piura2025_s20261120`), con otra agrega `_x<escala>`."""
+    return f"{name}_s{seed}" if scale == 1 else f"{name}_x{scale}_s{seed}"
+
+
+def share_beyond_max(tri: pd.DataFrame, max_delay_weeks: int) -> float:
+    """Proporción de casos del triángulo cuyo retraso supera `max_delay_weeks` (el tensor de datos disponibles los trunca en ese valor)."""
+    total = int(tri["n"].sum())
+    if total == 0:
+        return 0.0
+    over = int(tri.loc[(tri["avail_week"] - tri["onset_week"]) > max_delay_weeks, "n"].sum())
+    return over / total
 
 
 def estimate(reg: pd.DataFrame, cfg: dict, name: str = BASE) -> dict:
