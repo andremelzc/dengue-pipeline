@@ -6,6 +6,7 @@ import pytest
 from dengue_pipeline import alerts_eval, metrics
 
 CFG = {"alerts": {"yellow_per_100k": 50, "red_per_100k": 150, "sensitivity_cuts_per_100k": [100, 300]}}
+DIF = "_dif_disponibles_menos_final"
 POP = pd.DataFrame({"unit": ["A", "B"], "year": [2023, 2023], "population": [100_000, 100_000]})   # tasa = casos acumulados
 
 
@@ -79,9 +80,9 @@ def test_diferencia_pareada_cero_si_las_condiciones_son_iguales():
     obs, pred = rng.integers(0, 300, 60), rng.integers(0, 300, 60)
     p = pd.concat([_pred(obs, pred, cond="final"), _pred(obs, pred, cond="disponibles")])
     t = alerts_eval.alert_paired_difference(alerts_eval.attach_levels(p, POP, CFG), 4, 200, 0.95, 1)
-    t = t.dropna(subset=["sensibilidad_dif"])        # sin episodios en rojo con cortes 100/300 (obs < 300): no hay razón que calcular
+    t = t.dropna(subset=["sensibilidad" + DIF])        # sin episodios en rojo con cortes 100/300 (obs < 300): no hay razón que calcular
     assert len(t) == 3
-    assert (t["sensibilidad_dif"].abs() < 1e-12).all() and (t["tasa_falsa_alarma_dif_lo"].abs() < 1e-12).all()
+    assert (t["sensibilidad" + DIF].abs() < 1e-12).all() and (t["tasa_falsa_alarma" + DIF + "_lo"].abs() < 1e-12).all()
 
 
 def test_diferencia_pareada_detecta_peor_desempeno():
@@ -90,4 +91,14 @@ def test_diferencia_pareada_detecta_peor_desempeno():
     p = pd.concat([_pred(obs, good, cond="final"), _pred(obs, bad, cond="disponibles")])
     t = alerts_eval.alert_paired_difference(alerts_eval.attach_levels(p, POP, CFG), 4, 200, 0.95, 1)
     r = t[(t.cortes == "base") & (t.umbral == "amarillo_o_mas")].iloc[0]
-    assert r["sensibilidad_dif"] == -1.0 and r["sensibilidad_dif_hi"] == -1.0
+    assert r["sensibilidad" + DIF] == -1.0 and r["sensibilidad" + DIF + "_hi"] == -1.0   # disponibles menos final: nunca alerta, así que -1
+    assert r["tasa_falsa_alarma" + DIF] == 0.0
+
+
+def test_columnas_de_diferencia_pareada_llevan_el_signo_en_el_nombre():
+    obs = np.array([100.0, 0] * 20)
+    p = pd.concat([_pred(obs, obs, cond="final"), _pred(obs, obs, cond="disponibles")])
+    t = alerts_eval.alert_paired_difference(alerts_eval.attach_levels(p, POP, CFG), 4, 50, 0.95, 1)
+    dif = [c for c in t.columns if "_dif" in c]
+    assert sorted(dif) == sorted(f"{m}{DIF}{s}" for m in ("sensibilidad", "tasa_falsa_alarma") for s in ("", "_lo", "_hi"))
+    assert not any(c.endswith(("_dif", "_dif_lo", "_dif_hi")) for c in t.columns)    # los nombres ambiguos ya no existen

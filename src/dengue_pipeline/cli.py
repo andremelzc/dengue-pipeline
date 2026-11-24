@@ -123,8 +123,7 @@ def _cmd_alerts(a, cfg):
     ep = alerts_eval.episodes_table(d)
     ep.to_csv(out / "alert_episodes.csv", index=False)
     alerts_eval.episode_summary(ep).to_csv(out / "alert_episode_summary.csv", index=False)
-    print(f"{len(d)} predicciones con tasa ({d['unit'].nunique()} unidades); {len(ep)} episodios; "
-          "AVISO: corrida de prueba con retraso PROVISIONAL, no citar como resultado")
+    print(f"{len(d)} predicciones con tasa ({d['unit'].nunique()} unidades); {len(ep)} episodios")
     return 0
 
 

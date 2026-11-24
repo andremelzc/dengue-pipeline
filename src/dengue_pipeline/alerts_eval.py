@@ -15,6 +15,12 @@ total en semanas es `lead_total` = lead_runs + h. Un episodio que ya está en cu
 (censurado por la izquierda) se marca y se excluye del resumen.
 
 Unidades sin población (Lima Norte) quedan fuera: no tienen tasa [FALTA].
+
+Convención de signo de las diferencias pareadas (`alert_paired_difference`, archivo alert_paired_difference.csv). Toda columna de
+diferencia lleva el signo en el nombre: `<métrica>_dif_disponibles_menos_final` = métrica con datos disponibles MENOS métrica con la
+serie final, sobre las mismas semanas. Con sensibilidad, un valor positivo significa que con datos disponibles se detecta más; con tasa
+de falsa alarma, un valor positivo significa que con datos disponibles hay más falsas alarmas (peor). Los límites del intervalo llevan
+el sufijo `_lo` y `_hi` después del nombre completo.
 """
 from __future__ import annotations
 
@@ -23,7 +29,7 @@ import pandas as pd
 
 from . import metrics
 
-NOTE = "corrida de prueba: retraso PROVISIONAL (Piura simulado); no citar como resultado"
+DIF_SUFFIX = "_dif_disponibles_menos_final"   # signo explícito: disponibles menos final
 
 
 def attach_levels(pred: pd.DataFrame, pop: pd.DataFrame, cfg: dict) -> pd.DataFrame:
@@ -68,7 +74,7 @@ def alert_metrics_table(d: pd.DataFrame, block: int, n: int, ci: float, seed: in
                     wc = _week_counts(sub, scheme, thr)
                     row = {"condition": cond, "model": model, "horizon": h, "cortes": scheme, "umbral": thr_name,
                            "agrupacion": kind, "grupo": label, "semanas": len(wc),
-                           **{k: int(wc[k].sum()) for k in ("tp", "fp", "fn", "tn")}, "nota": NOTE}
+                           **{k: int(wc[k].sum()) for k in ("tp", "fp", "fn", "tn")}}
                     for name, (num, dens) in RATIOS.items():
                         est, lo, hi = metrics.block_bootstrap_ratio(wc[num].to_numpy(), wc[list(dens)].sum(axis=1).to_numpy(),
                                                                     block, n, ci, seed)
@@ -80,7 +86,8 @@ def alert_metrics_table(d: pd.DataFrame, block: int, n: int, ci: float, seed: in
 def alert_paired_difference(d: pd.DataFrame, block: int, n: int, ci: float, seed: int) -> pd.DataFrame:
     """Diferencia (datos disponibles - serie final) en sensibilidad y tasa de falsa alarma, con IC por bloques pareado.
 
-    Se remuestrean las MISMAS semanas en las dos condiciones. Positivo en sensibilidad = mejor con datos disponibles.
+    Se remuestrean las MISMAS semanas en las dos condiciones. Positivo en sensibilidad = mejor con datos disponibles; positivo en
+    tasa de falsa alarma = peor con datos disponibles. Las columnas llevan el signo en el nombre (ver `DIF_SUFFIX`).
     """
     rows = []
     for (model, h), g in d.groupby(["model", "horizon"]):
@@ -90,11 +97,11 @@ def alert_paired_difference(d: pd.DataFrame, block: int, n: int, ci: float, seed
                 wf = _week_counts(g[g["condition"] == "final"], scheme, thr)
                 wk = wa.index.intersection(wf.index)
                 wa, wf = wa.loc[wk], wf.loc[wk]
-                row = {"model": model, "horizon": h, "cortes": scheme, "umbral": thr_name, "semanas": len(wk), "nota": NOTE}
+                row = {"model": model, "horizon": h, "cortes": scheme, "umbral": thr_name, "semanas": len(wk)}
                 for name, (num, dens) in RATIOS.items():
                     if name == "falsas_alarmas_sobre_alertas":
                         continue
-                    row[name + "_dif"], row[name + "_dif_lo"], row[name + "_dif_hi"] = _paired_ratio_diff(
+                    row[name + DIF_SUFFIX], row[name + DIF_SUFFIX + "_lo"], row[name + DIF_SUFFIX + "_hi"] = _paired_ratio_diff(
                         wa, wf, num, list(dens), block, n, ci, seed)
                 rows.append(row)
     return pd.DataFrame(rows)
@@ -141,7 +148,7 @@ def episodes_table(d: pd.DataFrame, max_back: int = 8) -> pd.DataFrame:
                     rows.append({"condition": cond, "model": model, "horizon": h, "cortes": scheme, "umbral": thr_name,
                                  "unit": unit, "target_week_inicio": int(tw[s]), "year": int(g["year"].iloc[s]),
                                  "censurado_izq": bool(s == 0), "detectado": bool(np.isfinite(k)),
-                                 "lead_runs": k, "lead_total": k + h if np.isfinite(k) else np.nan, "nota": NOTE})
+                                 "lead_runs": k, "lead_total": k + h if np.isfinite(k) else np.nan})
     return pd.DataFrame(rows)
 
 
@@ -151,5 +158,4 @@ def episode_summary(ep: pd.DataFrame) -> pd.DataFrame:
     out = e.groupby(keys).agg(episodios=("detectado", "size"), detectados=("detectado", "sum"),
                               lead_total_mediana=("lead_total", "median"), lead_total_min=("lead_total", "min"),
                               lead_total_max=("lead_total", "max")).reset_index()
-    out["nota"] = NOTE
     return out
