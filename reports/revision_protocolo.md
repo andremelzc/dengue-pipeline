@@ -66,4 +66,4 @@ Consecuencias y qué haría:
 2. Resultado primario (2.4).
 3. Escenarios de retraso y número de semillas (4 y 1.3).
 4. Tratamiento de Lima Norte: sin alertas hasta tener población distrital (3).
-5. Los valores que siguen [PROVISIONAL] en `config.yaml` (el retraso, el canal endémico y el bootstrap se aprobaron el 23-nov-2026), la tasa semanal (acumulado de 4 semanas) y los rezagos de clima e ICEN.
+5. La tasa semanal (acumulado de 4 semanas). Todos los valores de `config.yaml` son los de la corrida de referencia; el retraso, el canal endémico y el bootstrap están aprobados desde el 23-nov-2026.
