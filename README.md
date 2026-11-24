@@ -13,7 +13,7 @@ disponibles en cada semana (incluido el retraso de notificación). Es un backtes
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt && pip install --no-deps -e .   # versiones exactas de las corridas del artículo (Python 3.13.3)
 # alternativa sin fijar versiones (otros Python): pip install -e ".[dev,notebook,icen]"
-pytest                      # 110 pasan y 7 se saltan sin los archivos reales (probado 23-nov-2026)
+pytest                      # 131 pasan y 7 se saltan sin los archivos reales (probado 23-nov-2026)
 # con los tres archivos reales se ejecutan también esas 7 pruebas, que reproducen cifras de datos.md:
 DENGUE_NATIONAL_CSV=/ruta/nacional.csv DENGUE_REGIONAL_CSV=/ruta/regional.csv DENGUE_POPULATION_XLSX=/ruta/proy_03_4.xlsx pytest
 ```
@@ -74,8 +74,9 @@ los 66 casos con notificación anterior al inicio (3.5), las semanas finales inc
 - El `Dockerfile` con versiones fijas (23-nov-2026): la imagen `python:3.13.3-slim` se construye con `requirements.txt` y dentro del contenedor pasan 97 pruebas y se saltan 7 (Python 3.13.3, pandas 3.1.1, numpy 2.5.5, scikit-learn 1.9.1, statsmodels 0.15.0, matplotlib 3.11.2, scipy 1.18.1).
 
 **Decisiones del equipo [DECISIÓN PENDIENTE]**
-- Protocolo `backtest:` APROBADO por el usuario el 22-nov-2026 (falta la conformidad del profesor/equipo). Retraso de notificación: escenario base Piura 2025, con Piura 2026 y Piura 2023 como sensibilidad y 5 semillas por escenario (criterio fijado antes de ver resultados; falta la conformidad del profesor). Siguen abiertos los [PROVISIONAL]: semilla del bootstrap y bloque del bootstrap.
-- Valores [PROVISIONAL] de `config.yaml` (semanas excluidas al estimar el retraso, retraso máximo, semilla, umbrales de validación, rezagos de clima e ICEN).
+- Protocolo `backtest:` APROBADO por el usuario el 22-nov-2026 (falta la conformidad del profesor/equipo). Retraso de notificación: escenario base Piura 2025, con Piura 2026 y Piura 2023 como sensibilidad y 5 semillas por escenario (criterio fijado antes de ver resultados; falta la conformidad del profesor). Aprobados el 23-nov-2026: semilla (20261120 a 20261124; la corrida principal usa 20261120), bloque (8 semanas) y remuestreos (1 000) del bootstrap.
+- Aprobados el 23-nov-2026: semanas excluidas al estimar el retraso (4), retraso máximo (26 semanas) y años del canal endémico (5).
+- Siguen [PROVISIONAL] en `config.yaml`: umbrales de validación, rezagos de clima e ICEN, rezagos de historial (`lags_weeks`) y guarda de etiquetas de entrenamiento (`train_label_guard_weeks`).
 - Tasa semanal: hoy es la incidencia acumulada de 4 semanas con la población del año epidemiológico (propuesta).
 - Autores: `LICENSE` (MIT, elegida el 22-nov-2026; los datos del CDC/INEI tienen sus propios términos) está a nombre de los tres autores del artículo (Melendez Cava, Mantari Flores, Cueva Alcala), igual que `CITATION.cff`. En `CITATION.cff` faltan la versión, la fecha de publicación y el DOI, que no se inventan.
 
@@ -115,9 +116,35 @@ python -m dengue_pipeline backtest                                              
 python -m dengue_pipeline delay-sensitivity --regional data/raw/piura.csv           # 3 escenarios x 5 semillas, solo condición disponibles (usa los hiperparámetros de la corrida principal)
 python -m dengue_pipeline backtest --train-first-year 2014 --features clima          # ablación desde 2014: correr antes `backtest --train-first-year 2014` (historial); las tres condiciones con el mismo año
 ```
-Salidas en `data/processed/backtest/sensibilidad_retraso/` (o `backtest_desde2014/sensibilidad_retraso/` si se usa `--train-first-year 2014`). `delay-sensitivity` reutiliza los hiperparámetros de la corrida principal y no repite la serie final (no depende del retraso). Con el escenario base y la semilla principal reproduce exactamente la corrida principal. Tiempo de cómputo: unos 3,5 minutos por combinación medidos el 22-nov-2026 (4 modelos, solo `disponibles`, equipo sin otra carga; 15 combinaciones por condición) [PENDIENTE: reconfirmar con la corrida actual].
+Salidas en `data/processed/backtest/sensibilidad_retraso/` (o `backtest_desde2014/sensibilidad_retraso/` si se usa `--train-first-year 2014`). `delay-sensitivity` reutiliza los hiperparámetros de la corrida principal y no repite la serie final (no depende del retraso). Con el escenario base y la semilla principal reproduce exactamente la corrida principal. Tiempo de cómputo medido el 23-nov-2026: `delay-sensitivity` dentro de la cadena completa tardó 3 651 s (`data/processed/reproducir_log.json`) y el bloque (a) (`alerts`, `delay-sensitivity --delay-scale 2 4`, y la variante de solo confirmados) tardó 45 min en total (18:12 a 18:57; `data/processed/reproducir_bloque_a_log.json`).
 
-Límites que se declaran: el retraso se mide solo en Piura y se aplica a las demás unidades como supuesto; los tres patrones subestiman el retraso real porque solo cuentan casos que ya llegaron al archivo (2023 y 2026 están incompletos en su corte); no se explica por qué 2023 y 2026 difieren mientras no se compruebe.
+Límites que se declaran: el archivo regional de Piura no trae el tipo de diagnóstico (sus 15 columnas son FECHA_CORTE a SEMANA_NOTIFICACION), así que el retraso se estima con todas las filas del departamento en el corte, sin distinguir confirmados de probables; el retraso se mide solo en Piura y se aplica a las demás unidades como supuesto; los tres patrones subestiman el retraso real porque solo cuentan casos que ya llegaron al archivo (2023 y 2026 están incompletos en su corte); no se explica por qué 2023 y 2026 difieren mientras no se compruebe.
+
+### Prueba de estrés del retraso (`--delay-scale`)
+```bash
+python -m dengue_pipeline delay-sensitivity --regional data/raw/piura.csv --delay-scale 2 4
+```
+Multiplica por 2 y por 4 el retraso en semanas que se sortea para cada caso. Es una **prueba de estrés de robustez**, no una estimación del retraso de otra región.
+Corre solo la condición `disponibles`, el escenario base (`piura2025`; otro con `--scenarios`), las cinco semillas de `delay.seeds` (20261120 a 20261124) y los hiperparámetros
+congelados de la corrida principal. Guarda en `data/processed/backtest/estres_retraso_x2/` y `.../estres_retraso_x4/` (no toca `sensibilidad_retraso/`); el resumen trae las
+columnas `escala_retraso` y `prop_casos_retraso_mayor_que_D`. Con la misma semilla, el sorteo es el mismo que en la corrida principal y solo cambia el retraso.
+Límite: el tensor de datos disponibles trunca el retraso en `delay.max_delay_weeks` (26 semanas): los casos con retraso mayor se cuentan como conocidos a las 26 semanas, así que a
+mayor escala la prueba es algo menos severa de lo que dice su nombre; `prop_casos_retraso_mayor_que_D` informa esa proporción en cada corrida.
+
+### Variante de solo confirmados (`--case-definition confirmed`)
+La definición por defecto es `case_definition: [C, P]` de `config.yaml` (confirmados y probables) y no cambia. La variante usa solo `tipo_dx = C` con el mismo código y guarda todo aparte:
+```bash
+python -m dengue_pipeline integrate --national data/raw/nacional.csv --case-definition confirmed                         # data/processed/solo_confirmados/weekly_final.csv
+python -m dengue_pipeline simulate  --national data/raw/nacional.csv --regional data/raw/piura.csv --case-definition confirmed   # .../triangle_simulated.csv.gz
+python -m dengue_pipeline backtest  --case-definition confirmed                                                         # .../solo_confirmados/backtest/ (con --train-first-year 2014: backtest_desde2014/)
+python -m dengue_pipeline alerts --predictions data/processed/solo_confirmados/backtest/predictions.csv.gz --out data/processed/solo_confirmados/backtest
+```
+Notas: el backtest de la variante elige sus propios hiperparámetros con su serie (carpeta aparte); el retraso simulado es el mismo (el archivo regional no distingue el tipo de diagnóstico);
+los cortes de alerta por 100 000 son los mismos, sin recalibrar para una serie sin probables. **La proporción de probables cambia por período**, así que la diferencia entre ambas definiciones
+no es constante: en la serie de las seis unidades (`weekly_final.csv`, 2010-2024) los probables son 25,4 % de los casos en 2020, 2,7 % en 2021, 1,5 % en 2022, 1,1 % en 2023 y 1,7 % en 2024 (alrededor de 2 % en 2023-2024).
+Por unidad varía mucho (en 2020, 76,1 % en Tumbes y 11,2 % en Piura).
+
+### Clima e ICEN (ablación)
 
 ```bash
 python -m dengue_pipeline climate --coordinates config/coordenadas.csv --start 20091101 --end 20241231 --downloaded-on AAAA-MM-DD   # necesita red
@@ -131,7 +158,12 @@ python -m dengue_pipeline alerts      # -> alert_metrics.csv, alert_paired_diffe
 ```
 Sensibilidad, tasa de falsa alarma, falsas alarmas sobre alertas y anticipación por episodio, con cortes 50/150 y 100/300 y umbrales "amarillo o más" y "rojo".
 IC por bootstrap de bloques de semanas, por año y por unidad; diferencia pareada entre condiciones. La anticipación por episodio no lleva IC (pocos episodios).
-Las salidas llevan la nota "no citar como resultado" mientras falte la conformidad del profesor.
+
+**Convención de signo de `alert_paired_difference.csv`.** Toda columna de diferencia lleva el signo en el nombre:
+`sensibilidad_dif_disponibles_menos_final` y `tasa_falsa_alarma_dif_disponibles_menos_final` (con sus límites `_lo` y `_hi` al final) son
+*datos disponibles menos serie final*, sobre las mismas semanas. En sensibilidad, un valor positivo significa que con datos disponibles se
+detecta más; en la tasa de falsa alarma, un valor positivo significa más falsas alarmas con datos disponibles. Los archivos generados antes de este
+cambio usan los nombres antiguos (`sensibilidad_dif`, `tasa_falsa_alarma_dif`) con el mismo signo; hay que volver a correr `alerts` para obtener los nuevos nombres.
 
 ## EDA
 `python -m dengue_pipeline eda` -> figuras `reports/eda_0*.png` y tablas; lectura en `reports/eda_resumen.md`.

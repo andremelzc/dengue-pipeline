@@ -16,7 +16,7 @@ Si coinciden, el pipeline es reproducible. Todo se hace con dos comandos: `repro
    # Windows: .venv\Scripts\activate      Linux/Mac: source .venv/bin/activate
    pip install -r requirements.txt
    pip install --no-deps -e .
-   python -m pytest -q          # deben pasar 110 y omitirse 7 (sin los archivos reales)
+   python -m pytest -q          # deben pasar 131 y omitirse 7 (sin los archivos reales)
    ```
 4. **Archivos de entrada: la misma copia, no los bajes de nuevo.** El portal de datos abiertos puede haber actualizado los CSV y
    entonces el hash cambia. Recíbelos de quien los descargó el 20-nov-2026 (por un canal privado, no por el repositorio: cada

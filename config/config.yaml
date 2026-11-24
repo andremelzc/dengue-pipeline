@@ -45,8 +45,8 @@ delay:                   # retraso de notificación (etapa 4)
   scenarios:             # sensibilidad: encierran al base (2023 con la cola más larga, 2026 con la más corta)
     piura2026: {cut: "20260702", onset_year: 2026}
     piura2023: {cut: "20230517", onset_year: 2023}
-  exclude_last_weeks: 4  # [PROVISIONAL] semanas finales del corte que se excluyen por estar incompletas
-  max_delay_weeks: 26    # [PROVISIONAL] retraso máximo modelado
+  exclude_last_weeks: 4  # [APROBADO 23-nov-2026] semanas finales del corte que se excluyen por estar incompletas
+  max_delay_weeks: 26    # [APROBADO 23-nov-2026] retraso máximo modelado
   seed: 20261120         # semilla de la corrida principal (= primera de `seeds`)
   seeds: [20261120, 20261121, 20261122, 20261123, 20261124]   # 5 semillas por escenario (sensibilidad); valores de trabajo
 
@@ -65,10 +65,10 @@ backtest:                # etapas 5 y 6. Bloque aprobado por el usuario el 22-no
   train_label_guard_weeks: 4        # [PROVISIONAL] solo se entrena con objetivos que terminaron hace >= 4 semanas
   endemic_channel_center: median    # median [APROBADO]; geometric = sensibilidad opcional, no es el valor por defecto; geometric usa endemic_channel_shift (Umaña 2026, JMIR e79914)
   endemic_channel_shift: 0.001      # solo si center=geometric
-  endemic_channel_years: 5          # [PROVISIONAL] años previos de la línea base de canal endémico [SIN FUENTE: agregar referencia]
+  endemic_channel_years: 5          # [APROBADO 23-nov-2026] años previos de la línea base de canal endémico [SIN FUENTE: agregar referencia]
   train_units: [PIURA, LAMBAYEQUE, LA_LIBERTAD, TUMBES, SAN_MARTIN]   # un solo modelo con todas
   transfer_units: [LIMA_NORTE]      # [APROBADO 22-nov-2026] sin historia propia: se evalúa con el modelo entrenado en las demás
   tuning_until_year: 2019           # [APROBADO 22-nov-2026] hiperparámetros elegidos solo con datos hasta 2019 y luego congelados
-  seed: 20261120                    # [PROVISIONAL]
-  bootstrap: {block_weeks: 8, n_resamples: 1000, ci: 0.95}   # [PROVISIONAL] bootstrap por bloques de semanas
+  seed: 20261120                    # [APROBADO 23-nov-2026]
+  bootstrap: {block_weeks: 8, n_resamples: 1000, ci: 0.95}   # [APROBADO 23-nov-2026] bootstrap por bloques de semanas
   population_csv: data/processed/population.csv   # unit,year,population (INEI, cuadro departamental 2000-2026). Lima Norte [FALTA]: sin población no tiene tasa
