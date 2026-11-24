@@ -9,7 +9,7 @@
 | Información | En la semana de origen t solo lo conocido en t; las etiquetas de entrenamiento también se toman con lo conocido en el momento de entrenar; guarda de 4 semanas | propuesta (probado: tests/test_backtest.py) |
 | Objetivo | Casos acumulados de 4 semanas que terminan en t+h (h = 2 y 4). Árboles: cambio relativo frente al nivel actual (log). Binomial negativa: conteo con desplazamiento | propuesta |
 | Modelos | canal endémico (referencia histórica), binomial negativa con rezagos, random forest, gradient boosting (+ persistencia como referencia extra) | modelos DECIDIDOS; detalles propuesta |
-| Condiciones | serie final vs datos disponibles (triángulo simulado con retraso PROVISIONAL de Piura) | DECIDIDO |
+| Condiciones | serie final vs datos disponibles (triángulo simulado con el retraso de Piura, aprobado el 23-nov-2026) | DECIDIDO |
 | Verdad | Serie final (sin retraso) | propuesta |
 | Unidades | Un modelo con Piura, Lambayeque, La Libertad, Tumbes, San Martín; Lima Norte solo transferencia (exploratorio) | propuesta |
 | Incertidumbre | Bootstrap por bloques de 8 semanas (1000 remuestreos, IC 95 %); resultados por año; los brotes no son independientes | propuesta |

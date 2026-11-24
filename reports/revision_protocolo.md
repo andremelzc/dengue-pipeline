@@ -47,7 +47,7 @@ Consecuencias y qué haría:
 - Es un **supuesto fuerte**: `simulate_triangle` sortea con la misma distribución (media 0,69 semanas; 94,4 % en <= 1 semana) para las seis unidades y todos los años. No varía con el tamaño del brote, la unidad, ni el año.
 - Efecto: la brecha entre condiciones es proporcional al retraso supuesto. En el triángulo actual el acumulado de 4 semanas conocido es, en la mediana, el 86 % del final. Si otras regiones o años de brote tuvieran retrasos mayores, la brecha real sería mayor; si menores, menor. Además, el retraso se mide solo sobre casos que ya llegaron al archivo, así que está subestimado (datos.md 3.6).
 - **Qué haría:** **A**: tratar el retraso como **parámetro de sensibilidad**, no como un valor único: reportar la diferencia entre condiciones bajo varias distribuciones (por ejemplo, la observada y versiones con retraso mayor), con los escenarios [PENDIENTE DE DECIDIR] por el equipo. Así el artículo dice "si el retraso es como el de Piura, la diferencia es X; cómo cambia con retraso mayor", en vez de afirmar un valor. Pedir al CDC los cortes de otras regiones sigue siendo la única forma de observarlo (datos.md §5).
-- El retraso PROVISIONAL (semanas excluidas, retraso máximo, semilla) debe decidirse antes de la corrida definitiva.
+- El retraso (semanas excluidas, retraso máximo, semilla) quedó decidido: aprobado el 23-nov-2026.
 
 ## 5. Otros puntos
 
@@ -66,4 +66,4 @@ Consecuencias y qué haría:
 2. Resultado primario (2.4).
 3. Escenarios de retraso y número de semillas (4 y 1.3).
 4. Tratamiento de Lima Norte: sin alertas hasta tener población distrital (3).
-5. Los valores [PROVISIONAL] de `config.yaml`, la tasa semanal (acumulado de 4 semanas) y los rezagos de clima e ICEN.
+5. Los valores que siguen [PROVISIONAL] en `config.yaml` (el retraso, el canal endémico y el bootstrap se aprobaron el 23-nov-2026), la tasa semanal (acumulado de 4 semanas) y los rezagos de clima e ICEN.
