@@ -10,10 +10,10 @@
   "physical_lines": 1065275,
   "rows_parsed": 1065274,
   "columns_ok": true,
-  "downloaded_on_note": "fecha indicada por el usuario: la de su carga a este chat (hora de Lima)"
+  "downloaded_on_note": "fecha indicada por los autores (hora de Lima)"
  },
  {
-  "file": "627a5d7f-dataset_dengue_actualizado_1.csv",
+  "file": "dataset_dengue_actualizado.csv",
   "kind": "regional",
   "source_url": "https://www.datosabiertos.gob.pe/dataset/casos-de-dengue-en-la-regi%C3%B3n-piura-gobierno-regional-piura",
   "downloaded_on": "2026-11-20",
@@ -23,6 +23,6 @@
   "physical_lines": 47083,
   "rows_parsed": 47082,
   "columns_ok": true,
-  "downloaded_on_note": "fecha indicada por el usuario: la de su carga a este chat (hora de Lima)"
+  "downloaded_on_note": "fecha indicada por los autores (hora de Lima)"
  }
 ]
