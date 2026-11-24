@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from importlib import metadata
 from pathlib import Path
 
+CONFIRMED_DIR = "data/processed/solo_confirmados"
 CLIMATE_START, CLIMATE_END = "20091101", "20241231"
 PACKAGES = ("pandas", "numpy", "scikit-learn", "statsmodels", "matplotlib", "scipy", "PyYAML", "openpyxl")
 
@@ -54,8 +55,13 @@ def verify_inputs(inputs: dict[str, str | Path], manifest_path: str | Path) -> l
 
 def build_steps(national: str, regional: str, population_xlsx: str, districts: str | None = None,
                 climate_downloaded_on: str | None = None, skip_climate: bool = False, ablation: bool = True,
-                sensitivity: bool = True, icen_csv: str = "config/icen.csv") -> list[Step]:
-    """Secuencia completa, en orden de dependencia."""
+                sensitivity: bool = True, icen_csv: str = "config/icen.csv", stress: bool = False,
+                confirmed: bool = False) -> list[Step]:
+    """Secuencia completa, en orden de dependencia.
+
+    `stress` y `confirmed` agregan pasos opcionales que NO forman parte de la secuencia de 14 pasos: la prueba de estrés del retraso
+    (x2 y x4) y la variante de solo confirmados (tipo_dx C), que guarda todo en data/processed/solo_confirmados.
+    """
     pop = ["population", population_xlsx] + (["--districts", districts] if districts else [])
     steps = [
         Step("validar", ["validate", "--national", national, "--regional", regional], "etapa 2: validación de los CSV"),
@@ -77,6 +83,9 @@ def build_steps(national: str, regional: str, population_xlsx: str, districts: s
     if sensitivity:
         steps.append(Step("sensibilidad", ["delay-sensitivity", "--regional", regional],
                           "sensibilidad al retraso: 3 escenarios x 5 semillas", tags={"pesado"}))
+    if stress:
+        steps.append(Step("estres_retraso", ["delay-sensitivity", "--regional", regional, "--delay-scale", "2", "4"],
+                          "prueba de estrés: retraso x2 y x4, escenario base x 5 semillas", tags={"pesado"}))
     if ablation:
         steps += [
             Step("hist2014", ["backtest", "--train-first-year", "2014"], "ablación desde 2014: historial", tags={"pesado"}),
@@ -84,6 +93,18 @@ def build_steps(national: str, regional: str, population_xlsx: str, districts: s
                  "ablación desde 2014: + clima", tags={"pesado"}),
             Step("clima_icen2014", ["backtest", "--train-first-year", "2014", "--features", "clima_icen"],
                  "ablación desde 2014: + clima + ICEN", tags={"pesado"}),
+        ]
+    if confirmed:
+        cdir = f"{CONFIRMED_DIR}/backtest"
+        steps += [
+            Step("integrar_confirmados", ["integrate", "--national", national, "--case-definition", "confirmed"],
+                 "variante solo confirmados: serie final"),
+            Step("simular_confirmados", ["simulate", "--national", national, "--regional", regional, "--case-definition", "confirmed"],
+                 "variante solo confirmados: triángulo simulado"),
+            Step("principal_confirmados", ["backtest", "--case-definition", "confirmed"],
+                 "variante solo confirmados: corrida principal", tags={"pesado"}),
+            Step("alertas_confirmados", ["alerts", "--predictions", f"{cdir}/predictions.csv.gz", "--out", cdir],
+                 "variante solo confirmados: métricas de alerta"),
         ]
     return steps
 

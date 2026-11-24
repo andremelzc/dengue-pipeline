@@ -14,6 +14,29 @@ from .config import load_config
 from .epiweek import abs_week
 from .io import read_strict
 
+# Variante de definición de caso: `--case-definition confirmed` usa solo tipo_dx = C (la definición por defecto es config.yaml: C + P).
+CASE_DEFINITIONS = {"confirmed": ["C"]}
+PROCESSED = "data/processed"
+CONFIRMED_DIR = f"{PROCESSED}/solo_confirmados"      # todo lo de la variante vive aquí, aparte de la corrida principal
+
+
+def _case_types(a):
+    """Tipos de diagnóstico de la variante pedida; None = la definición de config.yaml."""
+    return CASE_DEFINITIONS[a.case_definition] if getattr(a, "case_definition", None) else None
+
+
+def _processed_dir(a, default_out: str = PROCESSED) -> str:
+    """Carpeta de salida: la pedida, o la de la variante si se pidió y no se indicó otra."""
+    if getattr(a, "case_definition", None) and a.out == default_out:
+        return CONFIRMED_DIR
+    return a.out
+
+
+def _need(path) -> Path:
+    if not Path(path).exists():
+        raise SystemExit(f"[FALTA] {path}: corre antes `integrate` y `simulate` con el mismo --case-definition")
+    return Path(path)
+
 
 def _cmd_register(a, cfg):
     e = acquire.register_file(a.file, a.kind, a.source_url, a.downloaded_on, a.manifest)
@@ -36,8 +59,8 @@ def _cmd_validate(a, cfg):
 
 
 def _cmd_integrate(a, cfg):
-    tab = integrate.weekly_table(read_strict(a.national), cfg)
-    out = Path(a.out)
+    tab = integrate.weekly_table(read_strict(a.national), cfg, case_types=_case_types(a))
+    out = Path(_processed_dir(a))
     out.mkdir(parents=True, exist_ok=True)
     tab.to_csv(out / "weekly_final.csv", index=False)
     print(f"{len(tab)} filas ({tab['unit'].nunique()} unidades); casos descartados por semana inválida: "
@@ -67,9 +90,9 @@ def _cmd_delay(a, cfg):
 def _cmd_simulate(a, cfg):
     seed = cfg["delay"]["seed"] if a.seed is None else a.seed
     r = delay_scenarios.estimate(read_strict(a.regional), cfg, a.scenario)
-    final = integrate.weekly_table(read_strict(a.national), cfg)
+    final = integrate.weekly_table(read_strict(a.national), cfg, case_types=_case_types(a))
     tri = snapshots.simulate_triangle(final, r["pmf"], seed)
-    out = Path(a.out)
+    out = Path(_processed_dir(a))
     out.mkdir(parents=True, exist_ok=True)
     is_main = a.scenario == delay_scenarios.BASE and seed == cfg["delay"]["seed"]
     name = "triangle_simulated.csv.gz" if is_main else f"triangle_simulated_{delay_scenarios.tag(a.scenario, seed)}.csv.gz"
@@ -188,15 +211,21 @@ def _exog_for(a, weekly, units, cfg):
 
 def _cmd_backtest(a, cfg):
     from . import backtest, metrics
-    weekly = pd.read_csv(a.weekly)
-    tri = pd.read_csv(a.triangle)
-    out = Path(a.out)
+    weekly_path, tri_path = a.weekly, a.triangle
+    base_dir = Path(PROCESSED)
+    if a.case_definition:                        # variante: sus propios insumos y su propia carpeta de salida
+        base_dir = Path(CONFIRMED_DIR)
+        weekly_path = _need(base_dir / "weekly_final.csv") if a.weekly == f"{PROCESSED}/weekly_final.csv" else a.weekly
+        tri_path = _need(base_dir / "triangle_simulated.csv.gz") if a.triangle == f"{PROCESSED}/triangle_simulated.csv.gz" else a.triangle
+    weekly = pd.read_csv(weekly_path)
+    tri = pd.read_csv(tri_path)
+    out = base_dir / "backtest" if a.out == f"{PROCESSED}/backtest" else Path(a.out)
     models = a.models.split(",") if a.models else None
     units = [u["id"] for u in cfg["units"]]
     if a.train_first_year:                       # ablación con ICEN desde 2014: carpeta aparte para no pisar la corrida principal
         cfg["backtest"]["train_first_year"] = a.train_first_year
-        if a.out == "data/processed/backtest":
-            out = Path(f"data/processed/backtest_desde{a.train_first_year}")
+        if a.out == f"{PROCESSED}/backtest":
+            out = base_dir / f"backtest_desde{a.train_first_year}"
     exog, tag = _exog_for(a, weekly, units, cfg)
     frozen = None
     if a.features != "historial" and (out / "hyperparameters.json").exists():
@@ -291,7 +320,8 @@ def _cmd_reproduce(a, cfg):
             return 2
         print("AVISO: se sigue con datos distintos a los del manifiesto (--allow-different-data).")
     steps = reproduce.build_steps(a.national, a.regional, a.population_xlsx, a.districts, a.climate_downloaded_on,
-                                  a.skip_climate, not a.no_ablation, not a.no_sensitivity)
+                                  a.skip_climate, not a.no_ablation, not a.no_sensitivity,
+                                  stress=a.with_stress, confirmed=a.with_confirmed)
     only = a.only.split(",") if a.only else None
     steps = reproduce.select(steps, a.from_step, only)
     return reproduce.run(steps, dry_run=a.dry_run, log_path="data/processed/reproducir_log.json")
@@ -324,7 +354,10 @@ def main(argv: list[str] | None = None) -> int:
 
     s = sub.add_parser("integrate", help="etapa 3: tabla unidad x semana (serie final)")
     s.add_argument("--national", required=True)
-    s.add_argument("--out", default="data/processed")
+    s.add_argument("--case-definition", choices=list(CASE_DEFINITIONS), default=None,
+                   help="variante de definición de caso: confirmed = solo tipo_dx C (por defecto la de config.yaml, C + P); "
+                        f"si no se indica --out, escribe en {CONFIRMED_DIR}")
+    s.add_argument("--out", default=PROCESSED)
     s.set_defaults(fn=_cmd_integrate)
 
     s = sub.add_parser("delay", help="etapa 4: distribución del retraso de notificación (Piura)")
@@ -339,7 +372,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--regional", required=True)
     s.add_argument("--scenario", default=delay_scenarios.BASE, help="escenario del retraso (por defecto el base, piura2025)")
     s.add_argument("--seed", type=int, default=None, help="semilla (por defecto delay.seed de config.yaml)")
-    s.add_argument("--out", default="data/processed")
+    s.add_argument("--case-definition", choices=list(CASE_DEFINITIONS), default=None,
+                   help=f"igual que en integrate: confirmed = solo tipo_dx C; sin --out escribe en {CONFIRMED_DIR}")
+    s.add_argument("--out", default=PROCESSED)
     s.set_defaults(fn=_cmd_simulate)
 
     s = sub.add_parser("pair", help="par real de versiones: Piura 2023, corte frente a serie final")
@@ -401,6 +436,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="primer año de entrenamiento (p. ej. 2014 si hay ICEN solo desde 2014); salida en data/processed/backtest_desdeAAAA. "
                         "Corre las tres condiciones con este mismo valor para que la comparación sea justa")
     s.add_argument("--example-exog", action="store_true", help="usa clima/ICEN SINTÉTICOS solo para probar la interfaz")
+    s.add_argument("--case-definition", choices=list(CASE_DEFINITIONS), default=None,
+                   help=f"confirmed = solo tipo_dx C: lee la serie y el triángulo de {CONFIRMED_DIR} (hechos con integrate y simulate "
+                        f"--case-definition confirmed) y guarda en {CONFIRMED_DIR}/backtest (o backtest_desdeAAAA); "
+                        "elige sus propios hiperparámetros")
     s.add_argument("--weekly", default="data/processed/weekly_final.csv")
     s.add_argument("--triangle", default="data/processed/triangle_simulated.csv.gz")
     s.add_argument("--models", default=None, help="lista separada por comas (por defecto los cuatro)")
@@ -436,6 +475,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--skip-climate", action="store_true", help="no descarga el clima (ya existe data/processed/climate_weekly.csv)")
     s.add_argument("--no-sensitivity", action="store_true", help="omite la sensibilidad al retraso")
     s.add_argument("--no-ablation", action="store_true", help="omite la ablación desde 2014")
+    s.add_argument("--with-stress", action="store_true", help="agrega la prueba de estrés del retraso (x2 y x4); no está en los 14 pasos")
+    s.add_argument("--with-confirmed", action="store_true",
+                   help="agrega la variante de solo confirmados (integrar, simular, backtest y alertas); no está en los 14 pasos")
     s.add_argument("--from", dest="from_step", default=None, help="continúa desde este paso (tras un fallo o un corte)")
     s.add_argument("--only", default=None, help="solo estos pasos, separados por comas")
     s.add_argument("--dry-run", action="store_true", help="solo muestra los comandos")

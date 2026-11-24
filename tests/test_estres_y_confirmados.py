@@ -1,4 +1,4 @@
-"""Prueba de estrés del retraso (--delay-scale).
+"""Prueba de estrés del retraso (--delay-scale) y variante de solo confirmados (--case-definition confirmed).
 
 Las corridas largas se sustituyen por funciones falsas: aquí se comprueba qué se calcula y dónde se guarda, no el desempeño.
 """
@@ -11,7 +11,7 @@ import pytest
 from dengue_pipeline import backtest, cli, delay_scenarios as ds, metrics
 from dengue_pipeline import reproduce as rp
 from dengue_pipeline import snapshots as sn
-from helpers import regional_rows
+from helpers import national_rows, regional_rows
 
 
 # ---------- escala del retraso ----------
@@ -141,3 +141,73 @@ def test_sin_delay_scale_la_sensibilidad_sigue_igual(tmp_path, monkeypatch):
 def test_delay_scale_solo_acepta_2_y_4():
     with pytest.raises(SystemExit):
         cli.main(["delay-sensitivity", "--regional", "r.csv", "--delay-scale", "3"])
+
+
+# ---------- --case-definition confirmed ----------
+
+def _nat():
+    return national_rows([{"ano": 2023, "semana": 3, "tipo_dx": "C"}] * 3 + [{"ano": 2023, "semana": 3, "tipo_dx": "P"}] * 2)
+
+
+def test_integrate_confirmed_cuenta_solo_C_y_escribe_en_su_carpeta(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli, "read_strict", lambda p: _nat())
+    assert cli.main(["integrate", "--national", "nat.csv", "--case-definition", "confirmed"]) == 0
+    conf = pd.read_csv(tmp_path / "data/processed/solo_confirmados/weekly_final.csv")
+    assert conf["cases"].sum() == 3 and conf["cases_P"].sum() == 2            # `cases` = solo C; cases_P se conserva como columna informativa
+    assert not (tmp_path / "data/processed/weekly_final.csv").exists()        # no pisa la corrida principal
+    cli.main(["integrate", "--national", "nat.csv"])
+    assert pd.read_csv(tmp_path / "data/processed/weekly_final.csv")["cases"].sum() == 5   # el valor por defecto sigue siendo C + P
+
+
+def test_simulate_confirmed_usa_la_serie_de_confirmados(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    reg = regional_rows([dict(FECHA_CORTE="20260702", FECHA_INICIO_SINTOMAS="20250210", FECHA_NOTIFICACION="20250211")] * 30)
+    monkeypatch.setattr(cli, "read_strict", lambda p: _nat() if "nat" in str(p) else reg)
+    cli.main(["simulate", "--national", "nat.csv", "--regional", "reg.csv", "--case-definition", "confirmed"])
+    tri = pd.read_csv(tmp_path / "data/processed/solo_confirmados/triangle_simulated.csv.gz")
+    assert tri["n"].sum() == 3 and not (tmp_path / "data/processed/triangle_simulated.csv.gz").exists()
+
+
+def test_backtest_confirmed_lee_y_guarda_en_su_carpeta(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    d = tmp_path / "data/processed/solo_confirmados"
+    d.mkdir(parents=True)
+    _final().to_csv(d / "weekly_final.csv", index=False)
+    pd.DataFrame({"unit": ["A"], "onset_week": [1], "avail_week": [1], "n": [1]}).to_csv(d / "triangle_simulated.csv.gz", index=False)
+    fake = _Fake()
+    monkeypatch.setattr(backtest, "run_backtest", fake.run_backtest)
+    monkeypatch.setattr(metrics, "summarize", fake.summarize)
+    monkeypatch.setattr(metrics, "paired_difference", lambda *a: pd.DataFrame({"a": [1]}))
+    (d / "backtest").mkdir()
+    assert cli.main(["backtest", "--case-definition", "confirmed"]) == 0
+    assert fake.calls[0]["out_dir"] == Path("data/processed/solo_confirmados/backtest") and (d / "backtest" / "metrics_summary.csv").exists()
+    cli.main(["backtest", "--case-definition", "confirmed", "--train-first-year", "2014"])
+    assert fake.calls[1]["out_dir"] == Path("data/processed/solo_confirmados/backtest_desde2014")
+    assert not (tmp_path / "data/processed/backtest").exists()                # la corrida principal no se toca
+
+
+def test_backtest_confirmed_sin_insumos_falla_con_mensaje_claro(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit, match="FALTA"):
+        cli.main(["backtest", "--case-definition", "confirmed"])
+
+
+def test_case_definition_solo_acepta_confirmed():
+    with pytest.raises(SystemExit):
+        cli.main(["integrate", "--national", "n.csv", "--case-definition", "probable"])
+
+
+# ---------- pasos opcionales de reproduce ----------
+
+def _names(**kw):
+    return [s.name for s in rp.build_steps("n.csv", "r.csv", "pob.xlsx", climate_downloaded_on="2026-11-23", **kw)]
+
+
+def test_los_pasos_nuevos_son_opcionales_y_no_alteran_los_14():
+    assert len(_names()) == 14
+    full = _names(stress=True, confirmed=True)
+    assert full[:10] == _names()[:10] and len(full) == 19 and full.index("principal") < full.index("estres_retraso")
+    assert full.index("integrar_confirmados") < full.index("simular_confirmados") < full.index("principal_confirmados") < full.index("alertas_confirmados")
+    s = {x.name: x for x in rp.build_steps("n.csv", "r.csv", "pob.xlsx", stress=True, skip_climate=True)}
+    assert s["estres_retraso"].argv == ["delay-sensitivity", "--regional", "r.csv", "--delay-scale", "2", "4"]
